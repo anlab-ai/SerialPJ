@@ -138,7 +138,7 @@ class SerialDetection():
 			xmax = box[1][0]
 			ymax = box[1][1]
 			im_char = img_serial[ymin:ymax, xmin:xmax]
-			idx_cls, bestclass, bestconf = model.predict(im_char , pose= i)
+			idx_cls, bestclass, bestconf = model.predict(im_char , pose= i +1 )
 			serial_number += bestclass
 			# cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 		
