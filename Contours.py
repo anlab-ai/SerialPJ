@@ -17,27 +17,6 @@ def sortBBox(listboxmax,listboxmin):
                 listboxmin[j] = listboxmin[j+1]
                 listboxmin[j+1] = temp1
     return listboxmax, listboxmin
-
-def padding(bin):
-    print(bin.shape)
-    #bottom
-    for i in range(bin.shape[1]):
-        # for j in range(num):
-        bin[bin.shape[0]-2][i]=0
-        bin[bin.shape[0]-1][i]=0
-    #top
-    for i in range(bin.shape[1]):
-        bin[0][i]=0
-        bin[1][i]=0
-    #left
-    for i in range(bin.shape[0]):
-        bin[i][bin.shape[1]-2]=0
-        bin[i][bin.shape[1]-1]=0
-    #right
-    for i in range(bin.shape[0]):
-        bin[i][0]=0
-        bin[i][1]=0
-    return bin
 def coverGreenColorToWhiteColor(image):
     height,width = image.shape[0],image.shape[1]
     for loop1 in range(height):
@@ -80,14 +59,6 @@ def coverColorToWhiteColor(image):
             if g/(r+1) > 1.2 and g/(b+1) > 1.2 and g > 30+b and g > 30+r :
                 image[loop1,loop2] = 255,255,255
     return image
-# def coverColorToWhiteColorMX(image):
-#     height,width = image.shape[0],image.shape[1]
-#     for loop1 in range(height):
-#         for loop2 in range(width):
-#             r,g,b = image[loop1,loop2]
-#             if g > r +10 and g > b + 10:
-#                 image[loop1,loop2] = 255,255,255
-#     return image    
 def delLine(image):
     maxValue = 255*image.shape[1]
     height,width = image.shape[0],image.shape[1]
@@ -123,8 +94,6 @@ def avgDistanceChar(listboxmax,listboxmin):
     for i in range(len(listboxmax)-1):
         distance.append(listboxmax[i+1][0] - listboxmin[i][0])
     return np.average(distance)
-
-"""-----------------------API NEW-------------------------------"""
 def avgMaxy(listboxmax):
     lsMaxy = []
     for i in listboxmax:
@@ -177,7 +146,6 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         w = listBoxMaxFilterSmall[i][0] - listBoxMinFilterSmall[i][0]
         h = listBoxMaxFilterSmall[i][1] - listBoxMinFilterSmall[i][1]
         # Normal number
-        #and listboxmax[i][1] -25 <= avgmaxy and listboxmin[i][1] - 25 <= avgminy and listboxmax[i][1] + avgAreaHeight >= avgmaxy and listboxmin[i][1] - 0.8*avgAreaHeight <= avgminy
         if h > 0.6*avgAreaHeight and h * w >  0.5*avgArea : 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 1
@@ -313,7 +281,7 @@ def splitCharFromSerialNo(image):
     listboxmax,listboxmin = getBoundingBox(contours)
     listChar = removeBadContours(thresh,listboxmax,listboxmin)
     return image, listChar
-def splitCharFromForm(image,box=[1600,1380,2034,1460]):
+def splitCharFromForm(image,box=[1600,1380,2040,1460]):
     sizeImg=[2114,2990]
     image = cv2.resize(image,sizeImg)
     SerialNo = image[box[1]:box[3],box[0]:box[2]]
@@ -321,6 +289,43 @@ def splitCharFromForm(image,box=[1600,1380,2034,1460]):
     image, listChar = splitCharFromSerialNo(SerialNo)
     return image, listChar
 
+"""---------------- Electric Motor ---------------------"""
+def getBBoxFromelEctricMotorArea(image,listboxmax,listboxmin):
+    listboxmax1,listboxmin1 = sortBBox(listboxmax,listboxmin)
+    listBoxFilterSmall = []
+    listBBoxChar = []
+    coorXmin = []
+    coorXmax = []
+    coorYmax = []
+    coorYmin = []
+    #Delete smal bbox
+    for i in range(len(listboxmax)):
+        w = listboxmax1[i][0] - listboxmin1[i][0]
+        h = listboxmax1[i][1] - listboxmin1[i][1]
+        if w*h > 0.02*image.shape[0]*image.shape[1]:
+            listBoxFilterSmall.append((listboxmin[i],listboxmax[i]))
+            coorXmin.append(listboxmin1[i][0])
+            coorXmax.append(listboxmax1[i][0])
+            coorYmax.append(listboxmax1[i][1])
+            coorYmin.append(listboxmin1[i][1])
+    #Concatenate char
+    if len(listBoxFilterSmall)!= 0:
+        listBBoxChar.append([(np.min(coorXmin),np.min(coorYmin)),(np.max(coorXmax),np.max(coorYmax))])
+        return listBBoxChar
+    else: 
+        return False
+def splitCharElectricMotor(image):
+    image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+    electricMotor = image.copy()
+    electricMotorGray = coverColorToWhiteColor(electricMotor)
+    electricMotorGray = cv2.cvtColor(electricMotorGray, cv2.COLOR_BGR2GRAY)
+    m, dev = cv2.meanStdDev(electricMotorGray)    
+    ret, thresh = cv2.threshold(electricMotorGray, m[0][0] + 0.1*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+    thresh = delLine(thresh)
+    contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    listboxmax,listboxmin = getBoundingBox(contours)
+    listChar = getBBoxFromelEctricMotorArea(thresh,listboxmax,listboxmin)
+    return listChar
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
