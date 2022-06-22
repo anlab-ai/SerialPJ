@@ -51,12 +51,13 @@ def drawBBox(img,coor):
     for i in range(len(coor)):
         cv2.rectangle(img,coor[i][0],coor[i][1],(255,0,0),1)
     return img
-def coverColorToWhiteColor(image):
+def coverColorToWhiteColor(image, threshold_min = 60, ratio=1.1):
     height,width = image.shape[0],image.shape[1]
+    
     for loop1 in range(height):
         for loop2 in range(width):
             r,g,b = image[loop1,loop2]
-            if g/(r+1) > 1.2 and g/(b+1) > 1.2 and g > 30+b and g > 30+r :
+            if (g/(r+1) > ratio and g > threshold_min and g>b) :
                 image[loop1,loop2] = 255,255,255
     return image
 def delLine(image):
@@ -152,14 +153,14 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.15*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 0 small
-        elif abs(w-h)<6 and w*h > 0.2*avgArea: 
+        elif w-h<3 and w*h > 0.2*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
     # Filter serial number from goodBBox
     for i in range(len(goodBBox)): 
         w = goodBBox[i][1][0] - goodBBox[i][0][0] 
         h = goodBBox[i][1][1] - goodBBox[i][0][1] 
         #Check multi char
-        if w >1.25*h and h * w > 1.4*avgArea or w >1.8*h:
+        if w >1.25*h and h * w > 1.4*avgArea or w >1.3*h:
             listChar.append([(goodBBox[i][0][0],goodBBox[i][0][1]),(goodBBox[i][1][0],goodBBox[i][1][1])])
             listCentroidy.append(int((goodBBox[i][0][1]+goodBBox[i][1][1])/2))
         # One char
@@ -211,7 +212,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
         h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
         #Check multiChar
-        if w >1.2*h and h * w > 1.3*avgArea or w >1.8*h:
+        if w >1.2*h and h * w > avgArea or w >1.7*h:
             multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
             imgcp = image.copy()
             imgcp = imgcp[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
@@ -219,6 +220,13 @@ def removeBadContours(image,listboxmax1,listboxmin1):
             if w > 0.5*avgAreaWidth and w < 2.5*avgAreaWidth: 
                 imgcp2 = image[multiChar[0][1]:multiChar[1][1],multiChar[0][0]+int(w/2):multiChar[1][0]]
                 contourss,hierachy=cv2.findContours(imgcp2,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+                #Area by pixels
+                # bigArea = 0
+                # for row in range(imgcp2.shape[0]):
+                #     for col in range(imgcp2.shape[1]):
+                #         if imgcp2[row][col] > 240:
+                #             bigArea+=1
+                #Area by contours
                 # idMax = 0
                 # for idcontourss in range(len(contourss)):
                 #     if len(contourss[idcontourss]) > len(contourss[idMax]):
@@ -227,6 +235,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
                 # bigArea = 0
                 # for idcontourss in range(len(contourss)):
                 #     bigArea += cv2.contourArea(contourss[idcontourss])
+                #Area by bbox
                 bboxmax,bboxmin = getBoundingBox(contourss)
                 bbox = []
                 for k in range(len(bboxmax)):
@@ -281,8 +290,8 @@ def splitCharFromSerialNo(image):
     listboxmax,listboxmin = getBoundingBox(contours)
     listChar = removeBadContours(thresh,listboxmax,listboxmin)
     return image, listChar
-def splitCharFromForm(image,box=[1600,1380,2040,1460]):
-    sizeImg=[2114,2990]
+def splitCharFromForm(image,box=[965,918,1235,977]):
+    sizeImg=[1280,2000]
     image = cv2.resize(image,sizeImg)
     SerialNo = image[box[1]:box[3],box[0]:box[2]]
     # print(image.shape)
@@ -290,7 +299,7 @@ def splitCharFromForm(image,box=[1600,1380,2040,1460]):
     return image, listChar
 
 """---------------- Electric Motor ---------------------"""
-def getBBoxFromelEctricMotorArea(image,listboxmax,listboxmin):
+def getBBoxFromInOut(image,listboxmax,listboxmin):
     listboxmax1,listboxmin1 = sortBBox(listboxmax,listboxmin)
     listBoxFilterSmall = []
     listBBoxChar = []
@@ -302,7 +311,7 @@ def getBBoxFromelEctricMotorArea(image,listboxmax,listboxmin):
     for i in range(len(listboxmax)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
         h = listboxmax1[i][1] - listboxmin1[i][1]
-        if w*h > 0.02*image.shape[0]*image.shape[1]:
+        if w*h > 0.01*image.shape[0]*image.shape[1]:
             listBoxFilterSmall.append((listboxmin[i],listboxmax[i]))
             coorXmin.append(listboxmin1[i][0])
             coorXmax.append(listboxmax1[i][0])
@@ -311,21 +320,27 @@ def getBBoxFromelEctricMotorArea(image,listboxmax,listboxmin):
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
         listBBoxChar.append([(np.min(coorXmin),np.min(coorYmin)),(np.max(coorXmax),np.max(coorYmax))])
-        return listBBoxChar
+        return True, listBBoxChar
     else: 
-        return False
-def splitCharElectricMotor(image):
+        return False, listBBoxChar
+def getBoxCharInOutform(image):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
-    electricMotor = image.copy()
-    electricMotorGray = coverColorToWhiteColor(electricMotor)
-    electricMotorGray = cv2.cvtColor(electricMotorGray, cv2.COLOR_BGR2GRAY)
-    m, dev = cv2.meanStdDev(electricMotorGray)    
-    ret, thresh = cv2.threshold(electricMotorGray, m[0][0] + 0.1*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+    InOut = image.copy()
+    InOutGray = coverColorToWhiteColor(InOut)
+    InOutGray = cv2.cvtColor(InOutGray, cv2.COLOR_BGR2GRAY)
+    m, dev = cv2.meanStdDev(InOutGray)    
+    ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.1*dev[0][0], 255, cv2.THRESH_BINARY_INV)
     thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
-    listChar = getBBoxFromelEctricMotorArea(thresh,listboxmax,listboxmin)
-    return listChar
+    check, listChar = getBBoxFromInOut(thresh,listboxmax,listboxmin)
+    return check, listChar
+# def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
+#     sizeImg=[1280,2308]
+#     image = cv2.resize(image,sizeImg)
+#     SerialNo = image[box[1]:box[3],box[0]:box[2]]
+#     check, listChar = splitCharElectricMotor(image)
+#     return image, check, listChar
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
