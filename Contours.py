@@ -37,7 +37,9 @@ def drawBBox(img,coor):
         cv2.rectangle(img,coor[i][0],coor[i][1],(255,0,0),1)
     return img
 def convertColorToWhiteColor(image, threshold_Green_min = 80,threshold_Blue_min = 150,threshold_Red_min = 150, ratio=1.1):
+
     height,width = image.shape[0],image.shape[1]
+    
     for loop1 in range(height):
         for loop2 in range(width):
             r,g,b = image[loop1,loop2]
@@ -283,6 +285,7 @@ def splitCharFromSerialNo(image):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     SerialNo = image.copy()
     SerialGray = convertColorToWhiteColor(SerialNo)
+
     SerialGray = cv2.cvtColor(SerialGray, cv2.COLOR_BGR2GRAY)
     # Inverse 
     m, dev = cv2.meanStdDev(SerialGray)
