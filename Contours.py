@@ -12,7 +12,6 @@ def sortBBox(listboxmax,listboxmin):
                 temp = listboxmax[j]
                 listboxmax[j] = listboxmax[j+1]
                 listboxmax[j+1] = temp
-               
                 temp1 = listboxmin[j]
                 listboxmin[j] = listboxmin[j+1]
                 listboxmin[j+1] = temp1
@@ -43,8 +42,6 @@ def convertColorToWhiteColor(image, threshold_Green_min = 80,threshold_Blue_min 
         for loop2 in range(width):
             r,g,b = image[loop1,loop2]
             if (g/(r+1) > ratio and g > threshold_Green_min and g>b) :
-                image[loop1,loop2] = 255,255,255
-            if (b/(r+1) > ratio and b > threshold_Blue_min and b>g) :
                 image[loop1,loop2] = 255,255,255
             if (r/(g+1) > ratio and r > threshold_Red_min and r>b) :
                 image[loop1,loop2] = 255,255,255
@@ -303,7 +300,7 @@ def splitCharFromForm(image,box=[965,918,1235,977]):
     image, listChar = splitCharFromSerialNo(SerialNo)
     return image, listChar
 
-"""---------------- Electric Motor ---------------------"""
+"""---------------- InOut Area ---------------------"""
 def getBBoxFromInOut(image,listboxmax,listboxmin):
     listboxmax1,listboxmin1 = sortBBox(listboxmax,listboxmin)
     listBoxFilterSmall = []
