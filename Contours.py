@@ -17,14 +17,6 @@ def sortBBox(listboxmax,listboxmin):
                 listboxmin[j] = listboxmin[j+1]
                 listboxmin[j+1] = temp1
     return listboxmax, listboxmin
-def coverGreenColorToWhiteColor(image):
-    height,width = image.shape[0],image.shape[1]
-    for loop1 in range(height):
-        for loop2 in range(width):
-            r,g,b = image[loop1,loop2]
-            if g > 1+r and g>1+b:
-                image[loop1,loop2] = 255,255,255
-    return image
 def getBoundingBox(contours):
     listboxmin = []
     listboxmax = []
@@ -51,9 +43,8 @@ def drawBBox(img,coor):
     for i in range(len(coor)):
         cv2.rectangle(img,coor[i][0],coor[i][1],(255,0,0),1)
     return img
-def coverColorToWhiteColor(image, threshold_min = 60, ratio=1.1):
+def convertColorToWhiteColor(image, threshold_min = 80, ratio=1.1):
     height,width = image.shape[0],image.shape[1]
-    
     for loop1 in range(height):
         for loop2 in range(width):
             r,g,b = image[loop1,loop2]
@@ -65,7 +56,7 @@ def delLine(image):
     height,width = image.shape[0],image.shape[1]
     sumRow = np.sum(image,axis=1)  
     for loop1 in range(len(sumRow)):
-        if int(sumRow[loop1]) > maxValue*0.7:
+        if int(sumRow[loop1]) > maxValue*0.4:
             for i in range(width):
                image[loop1][i] = 0
                if loop1 > 1:
@@ -212,7 +203,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
         h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
         #Check multiChar
-        if w >1.2*h and h * w > avgArea or w >1.7*h:
+        if w >1.1*h and h * w > 1.3*avgArea or w >1.45*h:
             multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
             imgcp = image.copy()
             imgcp = imgcp[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
@@ -273,7 +264,7 @@ def getAvgFromList(listChar):
 def splitCharFromSerialNo(image):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     SerialNo = image.copy()
-    SerialGray = coverColorToWhiteColor(SerialNo)
+    SerialGray = convertColorToWhiteColor(SerialNo)
     SerialGray = cv2.cvtColor(SerialGray, cv2.COLOR_BGR2GRAY)
     # Inverse 
     m, dev = cv2.meanStdDev(SerialGray)
