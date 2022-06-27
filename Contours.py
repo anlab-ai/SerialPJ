@@ -53,28 +53,13 @@ def delLine(image):
     height,width = image.shape[0],image.shape[1]
     sumRow = np.sum(image,axis=1)  
     for loop1 in range(len(sumRow)):
-        if int(sumRow[loop1]) > maxValue*0.4:
+        if int(sumRow[loop1]) > maxValue*0.6:
             for i in range(width):
                image[loop1][i] = 0
                if loop1 > 1:
                    image[loop1-1][i] = 0
                if loop1 < height-2:
                    image[loop1+1][i] = 0
-    return image
-def delLineForInOut(image):
-    maxValue = 255*image.shape[1]
-    height,width = image.shape[0],image.shape[1]
-    sumRow = np.sum(image,axis=1)  
-    for loop1 in range(len(sumRow)):
-        if int(sumRow[loop1]) > maxValue*0.7:
-            for i in range(width):
-               image[loop1][i] = 0
-               if loop1 > 1:
-                   image[loop1-1][i] = 0
-                   image[loop1-2][i] = 0
-               if loop1 < height-2:
-                   image[loop1+1][i] = 0
-                   image[loop1+2][i] = 0
     return image
 def getAvg(listboxmax,listboxmin):
     area = []
@@ -360,7 +345,7 @@ def getInfo(image):
     InOutGray = cv2.cvtColor(InOutGray, cv2.COLOR_BGR2GRAY)
     m, dev = cv2.meanStdDev(InOutGray)    
     ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.05*dev[0][0], 255, cv2.THRESH_BINARY_INV)
-    thresh = delLineForInOut(thresh)
+    thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
     ret, bounding_box = getBBoxFromInOut(thresh,listboxmax,listboxmin)
