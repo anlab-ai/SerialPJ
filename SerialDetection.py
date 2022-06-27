@@ -180,7 +180,7 @@ class SerialDetection():
 
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
-		box_crop = [973,830, 1220, 880]
+		box_crop = [968,830, 1220, 884]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		# print("image shape", img.shape)
 		listChar = Contours.splitCharFromForm(img_serial)
@@ -215,7 +215,7 @@ class SerialDetection():
 		index_in_out = 0
 		index_electric = 0
 		img = resize_image_min(image,input_size=self.image_size )
-		box_in_out = [965,587,1060,625]
+		box_in_out = [965,590,1060,623]
 		
 		im_in_out = img[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
@@ -227,7 +227,7 @@ class SerialDetection():
 			index_in_out = self.selection(gray, self.feature_template[0] , self.feature_template[1])
 		
 		# ElectricMotor detection 
-		box_electric = [1150,590,1230,623]
+		box_electric = [1150,593,1230,625]
 		im_electric = img[box_electric[1]:box_electric[3],box_electric[0]:box_electric[2]]
 
 		ret, box_info = Contours.getInfo(im_electric)
