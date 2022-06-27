@@ -312,7 +312,8 @@ def splitCharFromForm(image):
 def getBBoxFromInOut(image,listboxmax,listboxmin):
     listboxmax1,listboxmin1 = sortBBox(listboxmax,listboxmin)
     listBoxFilterSmall = []
-    listBBoxChar = []
+    h,w = image.shape[:2]
+    listBBoxChar = [0, 0 , w, h]
     coorXmin = []
     coorXmax = []
     coorYmax = []
@@ -338,7 +339,7 @@ def getBBoxFromInOut(image,listboxmax,listboxmin):
             ret= True
     return ret, listBBoxChar
     
-def getInfo(image):
+def getInfo(image, threshold = 0.2):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     InOut = image.copy()
     InOutGray = convertColorToWhiteColor(InOut)
@@ -348,7 +349,23 @@ def getInfo(image):
     thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
+    
     ret, bounding_box = getBBoxFromInOut(thresh,listboxmax,listboxmin)
+    h, w = image.shape[:2]
+    if ret :
+        est = max(1, int(0.01*(bounding_box[3] - bounding_box[1])))
+        xmin = max(0 , bounding_box[0]-est)
+        ymin = max(0 , bounding_box[1] -est)
+        xmax = min(w , bounding_box[2] + est)
+        ymax = min(h , bounding_box[3] + est)
+        bounding_box = [xmin, ymin, xmax, ymax]
+        imcrop = thresh[ymin:ymax , xmin:xmax]
+        m = cv2.mean(imcrop)
+        if m[0]/255.0 < threshold :
+            ret = False
+        # cv2.imwrite("im.jpg", imcrop)
+        # print("mean" , m)
+        
     return ret, bounding_box
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
 #     sizeImg=[1280,2308]

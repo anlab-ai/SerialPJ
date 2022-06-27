@@ -97,6 +97,23 @@ def create_mask(image, est=0.2):
 	# mask = cv2.rectangle(mask, (0,0), (w, h), (0), 1)
 	return image, mask
 
+def create_mask_non_size(image, est=0.2):
+	h, w = image.shape[:2]
+	mask = 255*np.ones((h,w),np.uint8)
+	ex = 0
+	ey = 0
+	size = min(w, h)
+	# if h > w:
+	# 	ex = h-w
+	# elif w> h:
+	# 	ey = w- h
+	ex += int(est*size)
+	ey += int(est*size)
+	mask = cv2.copyMakeBorder(mask, ey//2, ey//2, ex//2, ex//2, cv2.BORDER_CONSTANT, value=(0, 0 , 0))
+	image = cv2.copyMakeBorder(image, ey//2, ey//2, ex//2, ex//2, cv2.BORDER_CONSTANT, value=(0, 0 , 0))
+	# mask = cv2.rectangle(mask, (0,0), (w, h), (0), 1)
+	return image, mask
+
 class SerialDetection():
 	def __init__(self):
 		self.num_classes = 36
@@ -118,16 +135,20 @@ class SerialDetection():
 		self.image_size = 1280
 		self.feature_template = []
 		im = cv2.imread("template_data/1.png", 0)
+		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature( im)
 		self.feature_template.append(fea)
 		im = cv2.imread("template_data/2.png", 0)
+		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
 
 		im = cv2.imread("template_data/3.png", 0)
+		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
 		im = cv2.imread("template_data/4.png", 0)
+		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
 		
@@ -160,6 +181,7 @@ class SerialDetection():
 		return idx_cls, bestclass, bestconf
 
 	def getFeature(self, image):
+		# image = self.pre_process(image)
 		blob = cv2.dnn.blobFromImage(image, 1/255.0, (105, 105))
 		# blob = cv2.dnn.blobFromImage(im, 1.0, size_net, mean, )
 		self.net.setInput(blob)
@@ -168,15 +190,38 @@ class SerialDetection():
 		feature = np.array(feature)[0]
 		feature = preprocessing.normalize(feature)
 		return feature
-	
-	def selection(self, im_query , feature1, feature2):
-		fea = self.getFeature( im_query)
+
+	def pre_process(self, image):
+		image = cv2.bitwise_not(image)
+		
+		# image = common.preprocess(image)
+		image, mask = create_mask_non_size(image, est=0.2)
+		
+		image = get_background(image, mask)
+		image = cv2.bitwise_not(image)
+		
+		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
+		
+		return gray
+
+	def selection(self, im_query , feature1, feature2, thresh=0.01):
+		gray = self.pre_process(im_query)
+		# cv2.imwrite("im.jpg" , gray)
+		fea = self.getFeature( gray)
 		score1 = numpy.linalg.norm(fea - feature1)
 		score2 = numpy.linalg.norm(fea - feature2)
-		if score1 < score2:
+		# print("score compare " , score1 , score2)
+		if score1 < score2 :
 			return 1 
-		else:
+		else :
 			return 2
+		# if score1 < score2 - thresh:
+		# 	return 1 
+		# elif score2 < score1 - thresh:
+		# 	return 2
+		# else:
+		# 	return 0
+		
 
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
@@ -214,45 +259,53 @@ class SerialDetection():
 	def checkSelection(self, image):
 		index_in_out = 0
 		index_electric = 0
-		img = resize_image_min(image,input_size=self.image_size )
-		box_in_out = [950,585,1063,627]
 		
-		im_in_out = img[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = image.shape[0]/img.shape[0]
+		box_in_out = [int(scale*950),int(scale*585),int(scale*1063),int(scale*627)]
+		# print("box_in_out" , box_in_out)
+		im_in_out = image[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
 		# in-out detection 
 		ret, box_info = Contours.getInfo(im_in_out)
 		if ret:
 			im_crop = im_in_out[box_info[1]:box_info[3] , box_info[0]:box_info[2]]
-			gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			index_in_out = self.selection(gray, self.feature_template[0] , self.feature_template[1])
+			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
+			
+			index_in_out = self.selection(im_crop, self.feature_template[0] , self.feature_template[1])
 		
 		# ElectricMotor detection 
-		box_electric = [1140,588,1235,625]
-		im_electric = img[box_electric[1]:box_electric[3],box_electric[0]:box_electric[2]]
-
-		ret, box_info = Contours.getInfo(im_electric)
+		box_electric = [int(scale*1140),int(scale*588),int(scale*1235),int(scale*625)]
+		# print("box_electric" , box_electric)
+		im_electric = image[box_electric[1]:box_electric[3],box_electric[0]:box_electric[2]]
+		ret, box_info2 = Contours.getInfo(im_electric)
 		if ret:
-			im_crop = im_electric[box_info[1]:box_info[3] , box_info[0]:box_info[2]]
-			gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			index_electric = self.selection(gray, self.feature_template[2] , self.feature_template[3])
+			im_crop = im_electric[box_info2[1]:box_info2[3] , box_info2[0]:box_info2[2]]
+			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
+			index_electric = self.selection(im_crop, self.feature_template[2] , self.feature_template[3])
+			
 		# print("index_in_out " , index_in_out)
 		# cv2.imwrite("output.jpg", im_in_out)
-		return index_in_out , index_electric
+		# box_info = [box_info[0] + box_in_out[0], box_info[1] + box_in_out[1] , box_info[2] + box_in_out[0] , box_info[3] + box_in_out[1]]
+		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
+		return index_in_out , index_electric 
 		
 if __name__ == '__main__':
 	model = SerialDetection()
-	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+	imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input")))
 	folder_save = "results"
 	if not os.path.exists(folder_save):
 		os.mkdir(folder_save)
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = "LK_image_from_pdf/LK-11S6-02_page0.jpeg"
+		# imagePath = "/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input/MFG No.042214830 LK-47VH-02E.jpg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
-		index_in_out , index_electric = model.checkSelection(image)
-		img_serial , serial_number = model.getSerialForm(image)
-		
+		index_in_out , index_electric   = model.checkSelection(image)
+		img_serial , serial_number= model.getSerialForm(image)
+		# image = resize_image_min(image,input_size=1280 )
+		# cv2.rectangle(image,(box_info[0], box_info[1]),(box_info[2], box_info[3]),(255,0,0),1)
+		# cv2.rectangle(image,(box_info2[0], box_info2[1]),(box_info2[2], box_info2[3]),(255,0,0),1)
 		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{basename}')
 		cv2.imwrite(path_out, image)
 		# exit()
