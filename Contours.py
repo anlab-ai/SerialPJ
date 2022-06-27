@@ -330,8 +330,12 @@ def getBBoxFromInOut(image,listboxmax,listboxmin):
     ret = False
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
-        listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
-        ret= True
+        w = np.max(coorXmax) - np.min(coorXmin)
+        h = np.max(coorYmax) - np.min(coorYmin)
+        s = w*h
+        if w > 1.5*h and s > 0.15*image.shape[0]*image.shape[1]:
+            listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
+            ret= True
     return ret, listBBoxChar
     
 def getInfo(image):
@@ -340,7 +344,7 @@ def getInfo(image):
     InOutGray = convertColorToWhiteColor(InOut)
     InOutGray = cv2.cvtColor(InOutGray, cv2.COLOR_BGR2GRAY)
     m, dev = cv2.meanStdDev(InOutGray)    
-    ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.1*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+    ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.05*dev[0][0], 255, cv2.THRESH_BINARY_INV)
     thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
