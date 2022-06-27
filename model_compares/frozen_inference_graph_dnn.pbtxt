@@ -1,0 +1,404 @@
+node {
+  name: "Conv1_input"
+  op: "Placeholder"
+  attr {
+    key: "dtype"
+    value {
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "shape"
+    value {
+      shape {
+        dim {
+          size: -1
+        }
+        dim {
+          size: 105
+        }
+        dim {
+          size: 105
+        }
+        dim {
+          size: 1
+        }
+      }
+    }
+  }
+}
+node {
+  name: "Conv1/convolution"
+  op: "Conv2D"
+  input: "Conv1_input:0"
+  input: "Conv1/kernel"
+  attr {
+    key: "dilations"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "explicit_paddings"
+    value {
+      list {
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv1/BiasAdd"
+  op: "BiasAdd"
+  input: "Conv1/convolution"
+  input: "Conv1/bias"
+}
+node {
+  name: "batch_normalization_1/FusedBatchNorm_1"
+  op: "FusedBatchNorm"
+  input: "Conv1/BiasAdd"
+  input: "batch_normalization_1/gamma"
+  input: "batch_normalization_1/beta"
+  input: "batch_normalization_1/moving_mean"
+  input: "batch_normalization_1/moving_variance"
+  attr {
+    key: "U"
+    value {
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "epsilon"
+    value {
+      f: 0.0010000000474974513
+    }
+  }
+}
+node {
+  name: "activation_1/Relu"
+  op: "Relu"
+  input: "batch_normalization_1/FusedBatchNorm_1"
+}
+node {
+  name: "max_pooling2d_1/MaxPool"
+  op: "MaxPool"
+  input: "activation_1/Relu"
+  attr {
+    key: "ksize"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv2/convolution"
+  op: "Conv2D"
+  input: "max_pooling2d_1/MaxPool"
+  input: "Conv2/kernel"
+  attr {
+    key: "dilations"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "explicit_paddings"
+    value {
+      list {
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv2/BiasAdd"
+  op: "BiasAdd"
+  input: "Conv2/convolution"
+  input: "Conv2/bias"
+}
+node {
+  name: "batch_normalization_2/FusedBatchNorm_1"
+  op: "FusedBatchNorm"
+  input: "Conv2/BiasAdd"
+  input: "batch_normalization_2/gamma"
+  input: "batch_normalization_2/beta"
+  input: "batch_normalization_2/moving_mean"
+  input: "batch_normalization_2/moving_variance"
+  attr {
+    key: "U"
+    value {
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "epsilon"
+    value {
+      f: 0.0010000000474974513
+    }
+  }
+}
+node {
+  name: "activation_2/Relu"
+  op: "Relu"
+  input: "batch_normalization_2/FusedBatchNorm_1"
+}
+node {
+  name: "max_pooling2d_2/MaxPool"
+  op: "MaxPool"
+  input: "activation_2/Relu"
+  attr {
+    key: "ksize"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv3/convolution"
+  op: "Conv2D"
+  input: "max_pooling2d_2/MaxPool"
+  input: "Conv3/kernel"
+  attr {
+    key: "dilations"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "explicit_paddings"
+    value {
+      list {
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv3/BiasAdd"
+  op: "BiasAdd"
+  input: "Conv3/convolution"
+  input: "Conv3/bias"
+}
+node {
+  name: "batch_normalization_3/FusedBatchNorm_1"
+  op: "FusedBatchNorm"
+  input: "Conv3/BiasAdd"
+  input: "batch_normalization_3/gamma"
+  input: "batch_normalization_3/beta"
+  input: "batch_normalization_3/moving_mean"
+  input: "batch_normalization_3/moving_variance"
+  attr {
+    key: "U"
+    value {
+      type: DT_FLOAT
+    }
+  }
+  attr {
+    key: "epsilon"
+    value {
+      f: 0.0010000000474974513
+    }
+  }
+}
+node {
+  name: "activation_3/Relu"
+  op: "Relu"
+  input: "batch_normalization_3/FusedBatchNorm_1"
+}
+node {
+  name: "max_pooling2d_3/MaxPool"
+  op: "MaxPool"
+  input: "activation_3/Relu"
+  attr {
+    key: "ksize"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 2
+        i: 2
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv4/convolution"
+  op: "Conv2D"
+  input: "max_pooling2d_3/MaxPool"
+  input: "Conv4/kernel"
+  attr {
+    key: "dilations"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+  attr {
+    key: "explicit_paddings"
+    value {
+      list {
+      }
+    }
+  }
+  attr {
+    key: "padding"
+    value {
+      s: "VALID"
+    }
+  }
+  attr {
+    key: "strides"
+    value {
+      list {
+        i: 1
+        i: 1
+        i: 1
+        i: 1
+      }
+    }
+  }
+}
+node {
+  name: "Conv4/BiasAdd"
+  op: "BiasAdd"
+  input: "Conv4/convolution"
+  input: "Conv4/bias"
+}
+node {
+  name: "flatten_1/Reshape"
+  op: "Flatten"
+  input: "Conv4/BiasAdd"
+}
+node {
+  name: "output_node0"
+  op: "Identity"
+  input: "flatten_1/Reshape"
+}
