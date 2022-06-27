@@ -302,11 +302,11 @@ def splitCharFromSerialNo(image):
     listboxmax,listboxmin = getBoundingBox(contours)
     listChar = removeBadContours(thresh,listboxmax,listboxmin)
     return listChar
-def splitCharFromForm(image,box=[968,830,1220,884]):
-    image = resize_image_min(image,1280)
-    SerialNo = image[box[1]:box[3],box[0]:box[2]]
-    listChar = splitCharFromSerialNo(SerialNo)
-    return SerialNo, listChar
+def splitCharFromForm(image):
+    # image = resize_image_min(image,1280)
+    # SerialNo = image[box[1]:box[3],box[0]:box[2]]
+    listChar = splitCharFromSerialNo(image)
+    return listChar
 
 """---------------- InOut Area ---------------------"""
 def getBBoxFromInOut(image,listboxmax,listboxmin):
@@ -327,13 +327,14 @@ def getBBoxFromInOut(image,listboxmax,listboxmin):
             coorXmax.append(listboxmax1[i][0])
             coorYmax.append(listboxmax1[i][1])
             coorYmin.append(listboxmin1[i][1])
+    ret = False
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
-        listBBoxChar.append([(np.min(coorXmin),np.min(coorYmin)),(np.max(coorXmax),np.max(coorYmax))])
-        return True, listBBoxChar
-    else: 
-        return False, listBBoxChar
-def getBoxCharInOutform(image):
+        listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
+        ret= True
+    return ret, listBBoxChar
+    
+def getInfo(image):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     InOut = image.copy()
     InOutGray = convertColorToWhiteColor(InOut)
@@ -343,14 +344,14 @@ def getBoxCharInOutform(image):
     thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
-    check, listChar = getBBoxFromInOut(thresh,listboxmax,listboxmin)
-    return check, listChar
+    ret, bounding_box = getBBoxFromInOut(thresh,listboxmax,listboxmin)
+    return ret, bounding_box
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
 #     sizeImg=[1280,2308]
 #     image = cv2.resize(image,sizeImg)
 #     SerialNo = image[box[1]:box[3],box[0]:box[2]]
 #     check, listChar = splitCharElectricMotor(image)
 #     return image, check, listChar
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
