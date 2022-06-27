@@ -186,7 +186,7 @@ class SerialDetection():
 		listChar = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
-		est = 3
+		est = 0
 		h, w = img_serial.shape[:2]
 
 		for i, box in enumerate(listChar):
@@ -207,7 +207,7 @@ class SerialDetection():
 		# 	xmax = box[1][0]
 		# 	ymax = box[1][1]
 			
-		# 	cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 		
 		return img_serial , serial_number
 
@@ -215,7 +215,7 @@ class SerialDetection():
 		index_in_out = 0
 		index_electric = 0
 		img = resize_image_min(image,input_size=self.image_size )
-		box_in_out = [965,590,1060,623]
+		box_in_out = [950,590,1063,623]
 		
 		im_in_out = img[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
@@ -227,7 +227,7 @@ class SerialDetection():
 			index_in_out = self.selection(gray, self.feature_template[0] , self.feature_template[1])
 		
 		# ElectricMotor detection 
-		box_electric = [1150,593,1230,625]
+		box_electric = [1140,593,1235,625]
 		im_electric = img[box_electric[1]:box_electric[3],box_electric[0]:box_electric[2]]
 
 		ret, box_info = Contours.getInfo(im_electric)
@@ -241,7 +241,7 @@ class SerialDetection():
 		
 if __name__ == '__main__':
 	model = SerialDetection()
-	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+	imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
 	folder_save = "results"
 	if not os.path.exists(folder_save):
 		os.mkdir(folder_save)
@@ -252,9 +252,8 @@ if __name__ == '__main__':
 		image = cv2.imread(imagePath)
 		index_in_out , index_electric = model.checkSelection(image)
 		img_serial , serial_number = model.getSerialForm(image)
-		
 		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{basename}')
-		cv2.imwrite(path_out, image)
+		cv2.imwrite(path_out, img_serial)
 		# exit()
 	# imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/EMNIST/source/DataCrop/ResultCrop")))
 	# folder_save = "results"
@@ -269,4 +268,17 @@ if __name__ == '__main__':
 	# 	path_out =os.path.join(folder_save , f'{bestclass}_{imagePath.split(os.path.sep)[-1]}') 
 	
 	# 	cv2.imwrite(path_out ,img_out )
-
+	# x1 = 1140
+	# y1 = 593
+	# x2 = 1230
+	# y2 = 625
+	# for filename in os.listdir('/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf'):
+	# 	image = cv2.imread('/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf/'+filename)
+	# 	image = resize_image_min(image,1280)
+	# 	electricMotor = image[y1:y2,x1:x2]
+	# 	# plt.imshow(electricMotor)
+	# 	# plt.show()
+	# 	ret, listChar = Contours.getInfo(electricMotor)
+	# 	if ret == True:
+	# 		cv2.rectangle(electricMotor,(listChar[0],listChar[1]),(listChar[2],listChar[3]),(255,0,0),1)
+	# 	cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+filename,electricMotor)
