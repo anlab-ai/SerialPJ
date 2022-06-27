@@ -215,7 +215,7 @@ class SerialDetection():
 		index_in_out = 0
 		index_electric = 0
 		img = resize_image_min(image,input_size=self.image_size )
-		box_in_out = [950,590,1063,623]
+		box_in_out = [950,585,1063,627]
 		
 		im_in_out = img[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
@@ -227,7 +227,7 @@ class SerialDetection():
 			index_in_out = self.selection(gray, self.feature_template[0] , self.feature_template[1])
 		
 		# ElectricMotor detection 
-		box_electric = [1140,593,1235,625]
+		box_electric = [1140,588,1235,625]
 		im_electric = img[box_electric[1]:box_electric[3],box_electric[0]:box_electric[2]]
 
 		ret, box_info = Contours.getInfo(im_electric)
@@ -270,4 +270,3 @@ if __name__ == '__main__':
 	
 	# 	cv2.imwrite(path_out ,img_out )
 
-	
