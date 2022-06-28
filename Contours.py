@@ -322,7 +322,7 @@ def getBBoxFromInOut(image,listboxmax,listboxmin):
     for i in range(len(listboxmax)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
         h = listboxmax1[i][1] - listboxmin1[i][1]
-        if w*h > 0.005*image.shape[0]*image.shape[1]:
+        if w*h > 0.002*image.shape[0]*image.shape[1] and w > 3*h or w*h >0.04*image.shape[0]*image.shape[1]:
             listBoxFilterSmall.append((listboxmin[i],listboxmax[i]))
             coorXmin.append(listboxmin1[i][0])
             coorXmax.append(listboxmax1[i][0])
