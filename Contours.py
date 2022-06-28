@@ -1,10 +1,12 @@
 from queue import Empty
 import cv2
-from cv2 import rectangle 
+from cv2 import rectangle
+from cv2 import log 
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 import math
+import random
 def sortBBox(listboxmax,listboxmin):
     for i in range(len(listboxmax)):
         for j in range(0,len(listboxmax)-i-1):
@@ -322,12 +324,18 @@ def getBBoxFromInOut(image,listboxmax,listboxmin):
     for i in range(len(listboxmax)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
         h = listboxmax1[i][1] - listboxmin1[i][1]
-        if w*h > 0.002*image.shape[0]*image.shape[1] and w > 3*h or w*h >0.04*image.shape[0]*image.shape[1]:
-            listBoxFilterSmall.append((listboxmin[i],listboxmax[i]))
-            coorXmin.append(listboxmin1[i][0])
-            coorXmax.append(listboxmax1[i][0])
-            coorYmax.append(listboxmax1[i][1])
-            coorYmin.append(listboxmin1[i][1])
+        if w*h > 0.005*image.shape[0]*image.shape[1] and w > 3*h or w*h >0.04*image.shape[0]*image.shape[1]:
+            sum=0
+            for row in range(listboxmin1[i][1],listboxmax1[i][1]):
+                for col in range(listboxmin1[i][0],listboxmax1[i][0]):
+                    if image[row][col] == 255:
+                        sum+=1
+            if sum >0.2*w*h:
+                listBoxFilterSmall.append((listboxmin[i],listboxmax[i]))
+                coorXmin.append(listboxmin1[i][0])
+                coorXmax.append(listboxmax1[i][0])
+                coorYmax.append(listboxmax1[i][1])
+                coorYmin.append(listboxmin1[i][1])
     ret = False
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
@@ -363,8 +371,8 @@ def getInfo(image, threshold = 0.2):
         m = cv2.mean(imcrop)
         if m[0]/255.0 < threshold :
             ret = False
-        # cv2.imwrite("im.jpg", imcrop)
-        # print("mean" , m)
+        # cv2.imwrite('img.jpg', imcrop)
+        # print("mean" , m[0]/255.0)
         
     return ret, bounding_box
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
