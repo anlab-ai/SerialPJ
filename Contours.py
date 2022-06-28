@@ -374,18 +374,25 @@ def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
     ret, bounding_box = getBBoxFromInOut(thresh,listboxmax,listboxmin,areaRatio)
     h, w = image.shape[:2]
     if ret :
-        est = max(1, int(0.01*(bounding_box[3] - bounding_box[1])))
+        est = 0
         xmin = max(0 , bounding_box[0]-est)
         ymin = max(0 , bounding_box[1] -est)
         xmax = min(w , bounding_box[2] + est)
-        ymax = min(h , bounding_box[3] + est)   
-        bounding_box = [xmin, ymin, xmax, ymax]
+
+        ymax = min(h , bounding_box[3] + est)
         imcrop = thresh[ymin:ymax , xmin:xmax]
         m = cv2.mean(imcrop)
         if m[0]/255.0 < threshold :
             ret = False
         # cv2.imwrite('img1.jpg', imcrop)
         # print("mean" , m[0]/255.0)
+        
+        est = max(1, int(0.05*(bounding_box[3] - bounding_box[1])))
+        xmin = max(0 , bounding_box[0]-est)
+        ymin = max(0 , bounding_box[1] -est)
+        xmax = min(w , bounding_box[2] + est)
+        ymax = min(h , bounding_box[3] + est)
+        bounding_box = [xmin, ymin, xmax, ymax]
         bounding_box= [int(bounding_box[0]*scale),int(bounding_box[1]*scale),int(bounding_box[2]*scale),int(bounding_box[3]*scale)]
     return ret, bounding_box
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
