@@ -140,10 +140,20 @@ class SerialDetection():
 		weights_path = 'lpr/model_24062022.hdf5'
 		self.net = get_model( weights_path = weights_path)
 		self.net.summary()
-		im1 = cv2.imread("template_data/1.png", 0)
-		im2 = cv2.imread("template_data/2.png", 0)
-		im3 = cv2.imread("template_data/3.png", 0)
-		im4 = cv2.imread("template_data/4.png", 0)
+		images = []
+		for i in range(2):
+			im = cv2.imread(f"template_data/side_{i+1}.png", 0)
+			images.append(im)
+		for i in range(2):
+			im = cv2.imread(f"template_data/electric_type_{i+1}.png", 0)
+			images.append(im)
+		for i in range(3):
+			im = cv2.imread(f"template_data/contruction_{i+1}_0.png", 0)
+			images.append(im)
+		# im1 = cv2.imread("template_data/1.png", 0)
+		# im2 = cv2.imread("template_data/2.png", 0)
+		# im3 = cv2.imread("template_data/3.png", 0)
+		# im4 = cv2.imread("template_data/4.png", 0)
 		self.feature_template = []
 		
 		# im1 = cv2.GaussianBlur(im1, (5,5), 0)
@@ -155,8 +165,8 @@ class SerialDetection():
 		# im2 = claheFilter.apply(im2)
 		# im3 = claheFilter.apply(im3)
 		# im4 = claheFilter.apply(im4)
-		features= self.getFeature_update([im1, im2, im3 , im4])
-		for i in range(4):
+		features= self.getFeature_update(images)
+		for i in range(len(images)):
 			fea = features[i]
 			fea = np.sum(fea, axis=0)
 			
@@ -191,7 +201,7 @@ class SerialDetection():
 		image = get_background(image, mask)
 		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
 		gray = cv2.resize(gray, (self.img_rows, self.img_cols))
-		
+		# cv2.imwrite("output.jpg", gray)
 		gray = img_to_array(gray)
 		gray = np.array(gray, dtype="float") / 255.0
 		gray = np.expand_dims(gray, axis=0)
@@ -207,6 +217,8 @@ class SerialDetection():
 				idx_cls = n
 				bestclass = self.labels[n]
 				bestconf = prediction[n]
+		# print("bestclass" , bestclass, is_digit)
+		# exit()
 		return idx_cls, bestclass, bestconf
 
 	def getFeature(self, image):
@@ -242,7 +254,10 @@ class SerialDetection():
 		
 		return gray
 
-	def selection(self, im_query , feature1, feature2, thresh=0.01):
+	def selection(self, im_query , features_template, thresh=0.01):
+		index = 0 
+		if len(features_template) < 2 :
+			return index
 		gray = self.pre_process(im_query)
 
 		features = self.getFeature_update( [gray])
@@ -254,16 +269,12 @@ class SerialDetection():
 		# feature1 = feature1 / np.sqrt(np.sum(feature1**2))
 		# feature2 = feature2 / np.sqrt(np.sum(feature2**2))
 		fea = fea / np.sqrt(np.sum(fea**2))
-		score1 = numpy.linalg.norm(fea- feature1)
-		score2 = numpy.linalg.norm(fea - feature2)
-		# print("score compare " , score1 , score2)
-		# cv2.imwrite("output.jpg", gray)
-		# exit()
-		if score1 < score2 :
-			return 1 
-		else :
-			return 2
-		
+		scores = []
+		for i, f in enumerate(features_template):
+			score = numpy.linalg.norm(fea- f)
+			scores.append(score)
+		index = np.argmin(scores) + 1
+		return index
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
 		box_crop = [968,830, 1220, 884]
@@ -282,6 +293,7 @@ class SerialDetection():
 			ymax = min(h , box[1][1] + est)
 			
 			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
 			is_digit = False
 			if i  > 0  :
 				is_digit = True
@@ -300,7 +312,7 @@ class SerialDetection():
 	def checkSelection(self, image):
 		index_in_out = 0
 		index_electric = 0
-		
+		index_contruction = 0
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
 		box_in_out = [int(scale*950),int(scale*585),int(scale*1063),int(scale*627)]
@@ -311,9 +323,8 @@ class SerialDetection():
 		ret, box_info = Contours.getInfo(im_in_out)
 		if ret:
 			im_crop = im_in_out[box_info[1]:box_info[3] , box_info[0]:box_info[2]]
-			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			
-			index_in_out = self.selection(im_crop, self.feature_template[0] , self.feature_template[1])
+			index_in_out = self.selection(im_crop, self.feature_template[0:2])
+   
 		# ElectricMotor detection 
 		box_electric = [int(scale*1140),int(scale*588),int(scale*1235),int(scale*625)]
 		# print("box_electric" , box_electric)
@@ -321,15 +332,23 @@ class SerialDetection():
 		ret, box_info2 = Contours.getInfo(im_electric)
 		if ret:
 			im_crop = im_electric[box_info2[1]:box_info2[3] , box_info2[0]:box_info2[2]]
-			
-			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			index_electric = self.selection(im_crop, self.feature_template[2] , self.feature_template[3])
-			
+			index_electric = self.selection(im_crop, self.feature_template[2:4])
+		
+		# Contruction detection
+		box_contruction = [int(scale*955),int(scale*543),int(scale*1230),int(scale*590)]
+		# print("box_electric" , box_electric)
+		im_contruction = image[box_contruction[1]:box_contruction[3],box_contruction[0]:box_contruction[2]]
+		ret, box_info3 = Contours.getInfo(im_contruction,areaRatio=[0.005,0.01,0.02])
+		if ret:
+			im_crop = im_contruction[box_info3[1]:box_info3[3] , box_info3[0]:box_info3[2]]
+			index_contruction = self.selection(im_crop, self.feature_template[4:7])
+		
 		# print("index_in_out " , index_in_out)
 		# cv2.imwrite("output.jpg", im_in_out)
 		# box_info = [box_info[0] + box_in_out[0], box_info[1] + box_in_out[1] , box_info[2] + box_in_out[0] , box_info[3] + box_in_out[1]]
-		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
-		return index_in_out , index_electric 
+		# box_info3 = [box_info3[0] + box_contruction[0], box_info3[1] + box_contruction[1] , box_info3[2] + box_contruction[0] , box_info3[3] + box_contruction[1]]
+  		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
+		return index_in_out , index_electric, index_contruction 
 		
 if __name__ == '__main__':
 	model = SerialDetection()
@@ -340,26 +359,29 @@ if __name__ == '__main__':
 		os.mkdir(folder_save)
 	count_index_in_out = 0
 	count_index_electric = 0
+	count_index_contruction = 0
+	count_SerialNo = 0
+	
 	listCountInout = {}
 	listCountElectric = {}
-	with open('expected_result_70_images.csv') as csv_file:
+	listCountContruction = {}
+	listSerialNo = {}
+	with open('expected_result_70_images_update.csv') as csv_file:
 			csv_reader = csv_file.readlines()	
 	for i in range(1,len(csv_reader)):
 		data = csv_reader[i].split(',')
 		listCountInout[data[0]] = int(data[6])
 		listCountElectric[data[0]] = int(data[7])
+		listSerialNo[data[0]] = data[14].strip()
+		listCountContruction[data[0]] = int(data[5])
 	errors_data = {}
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = "LK_image_from_pdf/MFG No.032200710 LK-F57VC-04_page0.jpeg"
+		# imagePath = "LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
-		index_in_out , index_electric   = model.checkSelection(image)
+		index_in_out , index_electric, index_contruction   = model.checkSelection(image)
 		print(index_in_out , index_electric)
-		# if index_in_out == 1:
-		# 	count_index_in_out +=1
-		# if index_electric == 1:
-		# 	count_index_electric +=1
 		if listCountInout[basename] != index_in_out:
 			print("basename errors " , basename)
 			count_index_in_out +=1
@@ -367,14 +389,24 @@ if __name__ == '__main__':
 		if listCountElectric[basename] != index_electric:
 			count_index_electric +=1
 			errors_data[basename] = 2
-		# img_serial , serial_number= model.getSerialForm(image)
+		if listCountContruction[basename] != index_contruction:
+			count_index_contruction +=1
+			# errors_data[basename] = 3
+		img_serial , serial_number= model.getSerialForm(image)
+		# with open("contruction_detection.csv", 'a') as f:
+		# 	f.write(f'{basename},{index_contruction}\n')
+		if listSerialNo[basename] != serial_number:
+			count_SerialNo += 1
+			# errors_data[basename] = 3
+		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
 		print("=================================\n")
+		
 		# image = resize_image_min(image,input_size=1280 )
 		# cv2.rectangle(image,(box_info[0], box_info[1]),(box_info[2], box_info[3]),(255,0,0),1)
-		# cv2.rectangle(image,(box_info2[0], box_info2[1]),(box_info2[2], box_info2[3]),(255,0,0),1)
-		# path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{basename}')
-		# cv2.imwrite(path_out, image)
+		# cv2.rectangle(image,(box_info3[0], box_info3[1]),(box_info3[2], box_info3[3]),(255,0,0),2)
+		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{basename}')
+		cv2.imwrite(path_out,image )
 		# exit()
-	print("errors " ,count_index_in_out , count_index_electric, errors_data)
+	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_SerialNo, errors_data)
 	
 
