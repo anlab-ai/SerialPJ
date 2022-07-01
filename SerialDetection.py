@@ -137,7 +137,7 @@ class SerialDetection():
 			labels = [line.strip('\n') for line in f.readlines()]
 		self.labels = labels[0].split(",")
 		self.image_size = 1280
-		weights_path = 'lpr/model_24062022.hdf5'
+		weights_path = 'models/model_24062022.hdf5'
 		self.net = get_model( weights_path = weights_path)
 		self.net.summary()
 		images = []
