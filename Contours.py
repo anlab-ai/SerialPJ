@@ -1,8 +1,7 @@
-from posixpath import basename
-from queue import Empty
 import cv2
 from cv2 import rectangle
-from cv2 import log 
+from cv2 import log
+from cv2 import resize 
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -342,25 +341,32 @@ def getBBoxFromInOut(image,listboxmax,listboxmin,areaRatio):
                 coorYmax.append(listboxmax1[i][1])
                 coorYmin.append(listboxmin1[i][1])
     ret = False
+    # imgBox = drawBBox (image,listBoxFilterSmall)
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/img.jpg',imgBox)
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
         w = np.max(coorXmax) - np.min(coorXmin)
         h = np.max(coorYmax) - np.min(coorYmin)
         s = w*h
         # if w > 1.5*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
-        if w > h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
+        if w > 0.7*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
             listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
             ret= True
+    # print(ret)
     return ret, listBBoxChar
     
-def getInfo(image, threshold = 0.18,areaRatio=[0.005,0.04,0.15]):
+def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
+    imageOri = image.copy()
+    image = resize_image_min(image,60)
+    scale = imageOri.shape[0]/image.shape[0]
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,image)
     # box_contruction: areaRatio=[0.005,0.01,0.02]
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     InOut = image.copy()
     InOutGray = convertColorToWhiteColor(InOut)
     InOutGray = cv2.cvtColor(InOutGray, cv2.COLOR_BGR2GRAY)
     m, dev = cv2.meanStdDev(InOutGray)    
-    ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.05*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+    ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.02*dev[0][0], 255, cv2.THRESH_BINARY_INV)
     thresh = delLine(thresh)
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
@@ -372,15 +378,15 @@ def getInfo(image, threshold = 0.18,areaRatio=[0.005,0.04,0.15]):
         xmin = max(0 , bounding_box[0]-est)
         ymin = max(0 , bounding_box[1] -est)
         xmax = min(w , bounding_box[2] + est)
-        ymax = min(h , bounding_box[3] + est)
+        ymax = min(h , bounding_box[3] + est)   
         bounding_box = [xmin, ymin, xmax, ymax]
         imcrop = thresh[ymin:ymax , xmin:xmax]
         m = cv2.mean(imcrop)
         if m[0]/255.0 < threshold :
             ret = False
-        # cv2.imwrite('img.jpg', imcrop)
+        # cv2.imwrite('img1.jpg', imcrop)
         # print("mean" , m[0]/255.0)
-        
+        bounding_box= [int(bounding_box[0]*scale),int(bounding_box[1]*scale),int(bounding_box[2]*scale),int(bounding_box[3]*scale)]
     return ret, bounding_box
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
 #     sizeImg=[1280,2308]
