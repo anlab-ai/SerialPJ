@@ -24,6 +24,10 @@ from scipy.spatial import distance
 from sklearn import preprocessing
 import Contours 
 
+latin_hand_writting_style_jp_model = "./latin_hand_writting_style_jp_model/"
+model_compares_text_options = "./model_compares_text_options/"
+template_image_text_options = "./template_image_text_options/"
+
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
 config = tf.ConfigProto(gpu_options=gpu_options)
 config.gpu_options.allow_growth = True
@@ -119,35 +123,35 @@ class SerialDetection():
 		self.num_classes = 36
 		# input image dimensions
 		self.img_rows, self.img_cols = 28, 28
-		json_file = open('models/model_0616_crop.json', 'r')
+		json_file = open(latin_hand_writting_style_jp_model + 'model_0616_crop.json', 'r')
 		loaded_model_json = json_file.read()
 		json_file.close()
 		self.loaded_model = model_from_json(loaded_model_json)
 		# load weights into new model
-		self.loaded_model.load_weights("models/model_weights_0616_crop.h5")
+		self.loaded_model.load_weights(latin_hand_writting_style_jp_model + "model_weights_0616_crop.h5")
 		print("Loaded model from disk")
 		self.loaded_model.summary()
 		self.img_debug = None
-		with open('model_name.txt','r') as f:
+		with open(latin_hand_writting_style_jp_model + 'model_name.txt','r') as f:
 			labels = [line.strip('\n') for line in f.readlines()]
 		self.labels = labels[0].split(",")
-		self.net = cv2.dnn.readNetFromTensorflow("model_compares/frozen_inference_graph_dnn.pb", "model_compares/frozen_inference_graph_dnn.pbtxt")
+		self.net = cv2.dnn.readNetFromTensorflow(model_compares_text_options + "frozen_inference_graph_dnn.pb", model_compares_text_options + "frozen_inference_graph_dnn.pbtxt")
 		self.image_size = 1280
 		self.feature_template = []
-		im = cv2.imread("template_data/1.png", 0)
+		im = cv2.imread(template_image_text_options + "1.png", 0)
 		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature( im)
 		self.feature_template.append(fea)
-		im = cv2.imread("template_data/2.png", 0)
+		im = cv2.imread(template_image_text_options + "2.png", 0)
 		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
 
-		im = cv2.imread("template_data/3.png", 0)
+		im = cv2.imread(template_image_text_options + "3.png", 0)
 		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
-		im = cv2.imread("template_data/4.png", 0)
+		im = cv2.imread(template_image_text_options + "4.png", 0)
 		# im = cv2.GaussianBlur(im, (3,3), 0)
 		fea = self.getFeature(im)
 		self.feature_template.append(fea)
@@ -244,7 +248,7 @@ class SerialDetection():
 			is_digit = False
 			if i  > 0  :
 				is_digit = True
-			idx_cls, bestclass, bestconf = model.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
 			serial_number += bestclass
 		# for i, box in enumerate(listChar):
 		# 	xmin = box[0][0]
