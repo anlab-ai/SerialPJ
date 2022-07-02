@@ -23,6 +23,8 @@ import numpy
 from scipy.spatial import distance
 from sklearn import preprocessing
 import Contours 
+from model_CRNN_3_channels import get_model
+from parameters import letters
 
 latin_hand_writting_style_jp_model = "./latin_hand_writting_style_jp_model/"
 model_compares_text_options = "./model_compares_text_options/"
@@ -36,6 +38,13 @@ sess = tf.Session(config=config)
 set_session(sess)
 import common
 
+def convertImage(img_pred):
+    
+    img_pred = cv2.resize(img_pred, (256, 64))
+    img_pred = (img_pred / 255.0) * 2.0 - 1.0
+    img_pred = img_pred.T
+    img_pred = np.expand_dims(img_pred, axis=-1)
+    return img_pred
 
 def alphaBlend( img1, img2, mask):
 		if mask.ndim==3 and mask.shape[-1] == 3:
@@ -73,7 +82,7 @@ def get_background(image , mask):
 	th = cv2.bitwise_and(mask, th)
 	m = cv2.mean(image, th)
 	output = np.zeros((h,w,3), image.dtype)
-	output[:, :] = (1*m[0], 1*m[1] ,1* m[2])
+	output[:, :] = (0.97*m[0], 0.97*m[1] ,0.97* m[2])
 	m = cv2.mean(output)
 	kernel = np.ones((3, 3), np.uint8)
 	mask = cv2.erode(mask, kernel) 
@@ -107,15 +116,11 @@ def create_mask_non_size(image, est=0.2):
 	ex = 0
 	ey = 0
 	size = min(w, h)
-	# if h > w:
-	# 	ex = h-w
-	# elif w> h:
-	# 	ey = w- h
+	
 	ex += int(est*size)
 	ey += int(est*size)
 	mask = cv2.copyMakeBorder(mask, ey//2, ey//2, ex//2, ex//2, cv2.BORDER_CONSTANT, value=(0, 0 , 0))
 	image = cv2.copyMakeBorder(image, ey//2, ey//2, ex//2, ex//2, cv2.BORDER_CONSTANT, value=(0, 0 , 0))
-	# mask = cv2.rectangle(mask, (0,0), (w, h), (0), 1)
 	return image, mask
 
 class SerialDetection():
@@ -130,31 +135,40 @@ class SerialDetection():
 		# load weights into new model
 		self.loaded_model.load_weights(latin_hand_writting_style_jp_model + "model_weights_0616_crop.h5")
 		print("Loaded model from disk")
-		self.loaded_model.summary()
+		# self.loaded_model.summary()
 		self.img_debug = None
 		with open(latin_hand_writting_style_jp_model + 'model_name.txt','r') as f:
 			labels = [line.strip('\n') for line in f.readlines()]
 		self.labels = labels[0].split(",")
-		self.net = cv2.dnn.readNetFromTensorflow(model_compares_text_options + "frozen_inference_graph_dnn.pb", model_compares_text_options + "frozen_inference_graph_dnn.pbtxt")
 		self.image_size = 1280
-		self.feature_template = []
-		im = cv2.imread(template_image_text_options + "1.png", 0)
-		# im = cv2.GaussianBlur(im, (3,3), 0)
-		fea = self.getFeature( im)
-		self.feature_template.append(fea)
-		im = cv2.imread(template_image_text_options + "2.png", 0)
-		# im = cv2.GaussianBlur(im, (3,3), 0)
-		fea = self.getFeature(im)
-		self.feature_template.append(fea)
+		weights_path = model_compares_text_options + 'model_24062022.hdf5'
+		self.net = get_model( weights_path = weights_path)
+		self.net.summary()
+		images = []
+		for i in range(2):
+			im = cv2.imread(template_image_text_options + f"side_{i+1}.png", 0)
+			images.append(im)
+		for i in range(2):
+			im = cv2.imread(template_image_text_options + f"electric_type_{i+1}.png", 0)
+			images.append(im)
+		for i in range(3):
+			im = cv2.imread(template_image_text_options + f"contruction_{i+1}_0.png", 0)
+			images.append(im)
 
-		im = cv2.imread(template_image_text_options + "3.png", 0)
-		# im = cv2.GaussianBlur(im, (3,3), 0)
-		fea = self.getFeature(im)
-		self.feature_template.append(fea)
-		im = cv2.imread(template_image_text_options + "4.png", 0)
-		# im = cv2.GaussianBlur(im, (3,3), 0)
-		fea = self.getFeature(im)
-		self.feature_template.append(fea)
+		for i in range(4):
+			im = cv2.imread(template_image_text_options + f"maker_{i+1}.png", 0)
+			images.append(im)
+		self.feature_template = []
+		
+		features= self.getFeature_update(images)
+		for i in range(len(images)):
+			fea = features[i]
+			fea = np.sum(fea, axis=0)
+			
+			# fea = fea.flatten()
+			fea = fea / np.sqrt(np.sum(fea**2))
+			self.feature_template.append(fea)
+			# exit()
 		
 		
 	def predict(self, image, is_digit=False):
@@ -166,7 +180,7 @@ class SerialDetection():
 		image = get_background(image, mask)
 		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
 		gray = cv2.resize(gray, (self.img_rows, self.img_cols))
-		
+		# cv2.imwrite("output.jpg", gray)
 		gray = img_to_array(gray)
 		gray = np.array(gray, dtype="float") / 255.0
 		gray = np.expand_dims(gray, axis=0)
@@ -182,6 +196,8 @@ class SerialDetection():
 				idx_cls = n
 				bestclass = self.labels[n]
 				bestconf = prediction[n]
+		# print("bestclass" , bestclass, is_digit)
+		# exit()
 		return idx_cls, bestclass, bestconf
 
 	def getFeature(self, image):
@@ -194,6 +210,15 @@ class SerialDetection():
 		feature = np.array(feature)[0]
 		feature = preprocessing.normalize(feature)
 		return feature
+
+	def getFeature_update(self, images):
+		datas = []
+		for im in images:
+			im = convertImage(im)
+			datas.append(im)
+		datas = np.array(datas)
+		features = self.net.predict(datas)
+		return features
 
 	def pre_process(self, image):
 		image = cv2.bitwise_not(image)
@@ -208,25 +233,29 @@ class SerialDetection():
 		
 		return gray
 
-	def selection(self, im_query , feature1, feature2, thresh=0.01):
+	def selection(self, im_query , features_template, thresh=0.01):
+		index = 0 
+		if len(features_template) < 2 :
+			return index
 		gray = self.pre_process(im_query)
-		# cv2.imwrite("im.jpg" , gray)
-		fea = self.getFeature( gray)
-		score1 = numpy.linalg.norm(fea - feature1)
-		score2 = numpy.linalg.norm(fea - feature2)
-		# print("score compare " , score1 , score2)
-		if score1 < score2 :
-			return 1 
-		else :
-			return 2
-		# if score1 < score2 - thresh:
-		# 	return 1 
-		# elif score2 < score1 - thresh:
-		# 	return 2
-		# else:
-		# 	return 0
-		
 
+		features = self.getFeature_update( [gray])
+		fea = features[0]
+		fea = np.sum(fea, axis=0)
+		# fea =  fea.flatten()
+		# feature1 = feature1.flatten()
+		# feature2 = feature2.flatten()
+		# feature1 = feature1 / np.sqrt(np.sum(feature1**2))
+		# feature2 = feature2 / np.sqrt(np.sum(feature2**2))
+		fea = fea / np.sqrt(np.sum(fea**2))
+		scores = []
+		for i, f in enumerate(features_template):
+			score = numpy.linalg.norm(fea- f)
+			scores.append(score)
+		
+		index = np.argmin(scores) + 1
+		print("scores " , scores)
+		return index, scores[index-1]
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
 		box_crop = [968,830, 1220, 884]
@@ -245,6 +274,7 @@ class SerialDetection():
 			ymax = min(h , box[1][1] + est)
 			
 			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
 			is_digit = False
 			if i  > 0  :
 				is_digit = True
@@ -263,7 +293,8 @@ class SerialDetection():
 	def checkSelection(self, image):
 		index_in_out = 0
 		index_electric = 0
-		
+		index_contruction = 0
+		index_maker = 0
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
 		box_in_out = [int(scale*950),int(scale*585),int(scale*1063),int(scale*627)]
@@ -274,10 +305,8 @@ class SerialDetection():
 		ret, box_info = Contours.getInfo(im_in_out)
 		if ret:
 			im_crop = im_in_out[box_info[1]:box_info[3] , box_info[0]:box_info[2]]
-			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			
-			index_in_out = self.selection(im_crop, self.feature_template[0] , self.feature_template[1])
-		
+			index_in_out, _ = self.selection(im_crop, self.feature_template[0:2])
+   
 		# ElectricMotor detection 
 		box_electric = [int(scale*1140),int(scale*588),int(scale*1235),int(scale*625)]
 		# print("box_electric" , box_electric)
@@ -285,45 +314,111 @@ class SerialDetection():
 		ret, box_info2 = Contours.getInfo(im_electric)
 		if ret:
 			im_crop = im_electric[box_info2[1]:box_info2[3] , box_info2[0]:box_info2[2]]
-			# gray = cv2.cvtColor(im_crop, cv2.COLOR_BGR2GRAY)
-			index_electric = self.selection(im_crop, self.feature_template[2] , self.feature_template[3])
+			index_electric, _ = self.selection(im_crop, self.feature_template[2:4])
+		
+		# Contruction detection
+		box_contruction = [int(scale*955),int(scale*543),int(scale*1230),int(scale*590)]
+		# print("box_electric" , box_electric)
+		im_contruction = image[box_contruction[1]:box_contruction[3],box_contruction[0]:box_contruction[2]]
+		ret, box_info3 = Contours.getInfo(im_contruction,areaRatio=[0.005,0.01,0.02])
+		if ret:
+			im_crop = im_contruction[box_info3[1]:box_info3[3] , box_info3[0]:box_info3[2]]
+			index_contruction, _ = self.selection(im_crop, self.feature_template[4:7])
+		
+  
+		# maker detection
+		box_maker = [int(scale*955),int(scale*473),int(scale*1230),int(scale*517)]
+		# print("box_electric" , box_electric)
+		im_maker = image[box_maker[1]:box_maker[3],box_maker[0]:box_maker[2]]
+		ret, box_info3 = Contours.getInfo(im_maker,areaRatio=[0.003,0.01,0.01])
+		if ret:
+			im_crop_full = im_maker[box_info3[1]:box_info3[3] , box_info3[0]:box_info3[2]]
+			h1, w1 = im_crop_full.shape[:2]
+			ratio = w1/ (h1 +1)
+			im_crop1 = None
+			im_crop = im_crop_full
+			if ratio > 3.5 :
+				im_crop1 = im_crop_full[0:h1, w1//2:w1]
+				im_crop = im_crop_full[0:h1, 0:w1//2]
+				
+			index_maker, score = self.selection(im_crop, self.feature_template[7:11])
+			if im_crop1 is not None:
+				index_maker2, score2 = self.selection(im_crop1, self.feature_template[7:11])
+				if score2 < score:
+					index_maker= index_maker2
+				im_crop = im_crop1
 			
+	
 		# print("index_in_out " , index_in_out)
 		# cv2.imwrite("output.jpg", im_in_out)
 		# box_info = [box_info[0] + box_in_out[0], box_info[1] + box_in_out[1] , box_info[2] + box_in_out[0] , box_info[3] + box_in_out[1]]
-		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
-		return index_in_out , index_electric 
+		# box_info3 = [box_info3[0] + box_contruction[0], box_info3[1] + box_contruction[1] , box_info3[2] + box_contruction[0] , box_info3[3] + box_contruction[1]]
+  		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
+		return index_in_out , index_electric, index_contruction, index_maker
 		
 if __name__ == '__main__':
 	model = SerialDetection()
-	imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input")))
+	# imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input/")))
+	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
 	folder_save = "results"
 	if not os.path.exists(folder_save):
 		os.mkdir(folder_save)
+	count_index_in_out = 0
+	count_index_electric = 0
+	count_index_contruction = 0
+	count_SerialNo = 0
+	count_maker = 0
+ 
+	listCountInout = {}
+	listCountElectric = {}
+	listCountContruction = {}
+	listSerialNo = {}
+	listMaker = {}
+	with open('expected_result_70_images_update.csv') as csv_file:
+			csv_reader = csv_file.readlines()	
+	for i in range(1,len(csv_reader)):
+		data = csv_reader[i].split(',')
+		listCountInout[data[0]] = int(data[6])
+		listCountElectric[data[0]] = int(data[7])
+		listSerialNo[data[0]] = data[14].strip()
+		listCountContruction[data[0]] = int(data[5])
+		listMaker[data[0]] = int(data[4])
+	errors_data = {}
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = "/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input/MFG No.042214830 LK-47VH-02E.jpg"
+		# imagePath = "LK_image_from_pdf/LK-47VHH-02_page0.jpeg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
-		index_in_out , index_electric   = model.checkSelection(image)
+		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
+		print(index_in_out , index_electric, index_contruction, index_maker)
+		if listCountInout[basename] != index_in_out:
+			print("basename errors " , basename)
+			count_index_in_out +=1
+			errors_data[basename] = 1
+		if listCountElectric[basename] != index_electric:
+			count_index_electric +=1
+			errors_data[basename] = 2
+		if listCountContruction[basename] != index_contruction:
+			count_index_contruction +=1
+			errors_data[basename] = 3
+		if listMaker[basename] != index_maker:
+			count_maker +=1
+			errors_data[basename] = 4
 		img_serial , serial_number= model.getSerialForm(image)
+		# with open("maker_detection.csv", 'a') as f:
+		# 	f.write(f'{basename},{index_maker}\n')
+		if listSerialNo[basename] != serial_number:
+			count_SerialNo += 1
+			# errors_data[basename] = 3
+		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
+		print("=================================\n")
+		
 		# image = resize_image_min(image,input_size=1280 )
 		# cv2.rectangle(image,(box_info[0], box_info[1]),(box_info[2], box_info[3]),(255,0,0),1)
-		# cv2.rectangle(image,(box_info2[0], box_info2[1]),(box_info2[2], box_info2[3]),(255,0,0),1)
-		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{basename}')
+		# cv2.rectangle(image,(box_info3[0], box_info3[1]),(box_info3[2], box_info3[3]),(255,0,0),2)
+		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{index_contruction}_{index_maker}_{basename}')
 		cv2.imwrite(path_out, image)
 		# exit()
-	# imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/EMNIST/source/DataCrop/ResultCrop")))
-	# folder_save = "results"
-	# if not os.path.exists(folder_save):
-	# 	os.mkdir(folder_save)
-	# for imagePath in imagePaths:
-	# 	image = cv2.imread(imagePath)
-	# 	base_path = imagePath.split(os.path.sep)[-1]
-	# 	pose = int(base_path.split("_")[0])
-	# 	idx_cls, bestclass, bestconf = model.predict(image , pose= pose)
-	# 	img_out = model.img_debug
-	# 	path_out =os.path.join(folder_save , f'{bestclass}_{imagePath.split(os.path.sep)[-1]}') 
+	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo, errors_data)
 	
-	# 	cv2.imwrite(path_out ,img_out )
 
