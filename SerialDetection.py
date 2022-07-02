@@ -254,7 +254,7 @@ class SerialDetection():
 			scores.append(score)
 		
 		index = np.argmin(scores) + 1
-		print("scores " , scores)
+		# print("scores " , scores)
 		return index, scores[index-1]
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )

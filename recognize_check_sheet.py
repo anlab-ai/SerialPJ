@@ -76,9 +76,9 @@ class CheckSheetReader():
 		errCode, imgPumpName, pumpName = self.readPumpName(image)
 		errCode, imgMFGNo, mfgNo = self.readMFGNo(image)
 		errCode, imgMotorLotNo , motorLotNo = self.getString(image,self.position_infos[constant.TAG_MOTOR_LOT_NO], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		errCode, imgMaker, maker = self.getString(image, self.position_infos[constant.TAG_MAKER], OCRMode.JAPANESE)
-		errCode, imgConstruction, construction = self.getString(image, self.position_infos[constant.TAG_CONSTRUCTION], OCRMode.JAPANESE)
-		side , electricType = self.model.checkSelection(image)
+		# errCode, imgMaker, maker = self.getString(image, self.position_infos[constant.TAG_MAKER], OCRMode.JAPANESE)
+		# errCode, imgConstruction, construction = self.getString(image, self.position_infos[constant.TAG_CONSTRUCTION], OCRMode.JAPANESE)
+		side , electricType, index_contruction, index_maker = self.model.checkSelection(image)
 		# print(f'side , electricType = {(side , electricType)}')
 		errCode, imgPowerValue, powerValue = self.getString(image, self.position_infos[constant.TAG_POWER_VALUE], OCRMode.DIGIT)
 		errCode, imgDynamicViscosity, dynamicViscosity = self.getString(image, self.position_infos[constant.TAG_DYNAMIC_VISCOSITY], OCRMode.DIGIT)
@@ -97,7 +97,7 @@ class CheckSheetReader():
 		oRingMaterial = str(checkMaterialSelections[5])
 		
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
-,{maker.strip().replace(",", "")},{construction.strip().replace(",", "")},{side},{electricType}\
+,{index_maker},{index_contruction},{side},{electricType}\
 ,{powerValue.strip().replace(",", "")},{dynamicViscosity.strip().replace(",", "")},{pumpValue.strip().replace(",", "")}\
 ,{vValue.strip().replace(",", "")},{hzValue.strip().replace(",", "")},{minValue.strip().replace(",", "")},{serial_number.strip().replace(",", "")}\
 ,{flangePHeadMaterial},{valveMaterial},{vGuideMaterial}\
