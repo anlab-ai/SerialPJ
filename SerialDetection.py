@@ -89,7 +89,7 @@ def get_background(image , mask):
    
 	return blended
 
-def create_mask(image, est=0.2):
+def create_mask(image, est=1):
 	h, w = image.shape[:2]
 	mask = 255*np.ones((h,w),np.uint8)
 	ex = 0
@@ -199,7 +199,7 @@ class SerialDetection():
 	def predict(self, image, is_digit=False):
 		image = cv2.bitwise_not(image)
 		# image = common.preprocess(image)
-		image = resize_image(image , input_size=28)
+		image = resize_image(image , input_size=26)
 		image, mask = create_mask(image)
 		
 		image = get_background(image, mask)
@@ -279,7 +279,7 @@ class SerialDetection():
 			scores.append(score)
 		
 		index = np.argmin(scores) + 1
-		print("scores " , scores)
+		# print("scores " , scores)
 		return index, scores[index-1]
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
@@ -289,7 +289,7 @@ class SerialDetection():
 		listChar = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
-		est = 0
+		est = 2
 		h, w = img_serial.shape[:2]
 
 		for i, box in enumerate(listChar):
@@ -409,9 +409,10 @@ if __name__ == '__main__':
 		listCountContruction[data[0]] = int(data[5])
 		listMaker[data[0]] = int(data[4])
 	errors_data = {}
+	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = "LK_image_from_pdf/LK-47VHH-02_page0.jpeg"
+		# imagePath = "LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
 		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
@@ -432,9 +433,10 @@ if __name__ == '__main__':
 		img_serial , serial_number= model.getSerialForm(image)
 		# with open("maker_detection.csv", 'a') as f:
 		# 	f.write(f'{basename},{index_maker}\n')
+		print("serial_number " , serial_number , listSerialNo[basename])
 		if listSerialNo[basename] != serial_number:
 			count_SerialNo += 1
-			# errors_data[basename] = 3
+			errors_data[basename] = 5
 		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
 		print("=================================\n")
 		
