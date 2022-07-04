@@ -56,8 +56,8 @@ class CheckSheetReader():
 		pumpName = ''
 		mfgNo = ''
 		motorLotNo = ''
-		maker = ''
-		construction = ''
+		index_maker = ''
+		index_contruction = ''
 		side = ''
 		electricType = ''
 		powerValue = ''
@@ -82,7 +82,7 @@ class CheckSheetReader():
 		# print(f'side , electricType = {(side , electricType)}')
 		errCode, imgPowerValue, powerValue = self.getString(image, self.position_infos[constant.TAG_POWER_VALUE], OCRMode.DIGIT)
 		errCode, imgDynamicViscosity, dynamicViscosity = self.getString(image, self.position_infos[constant.TAG_DYNAMIC_VISCOSITY], OCRMode.DIGIT)
-		errCode, imgPumpValue, pumpValue = self.getString(image, self.position_infos[constant.TAG_PUMP_VALUE], OCRMode.ENGLISH)
+		errCode, imgPumpValue, pumpValue = self.readPumpValue(image)
 		errCode, imgVValue , vValue = self.getString(image,self.position_infos[constant.TAG_V_VALUE], OCRMode.DIGIT)
 		errCode, imgHzValue , hzValue = self.getString(image,self.position_infos[constant.TAG_HZ_VALUE], OCRMode.DIGIT)
 		errCode, imgMinValue , minValue = self.getString(image,self.position_infos[constant.TAG_MIN_VALUE], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
@@ -105,7 +105,7 @@ class CheckSheetReader():
 
 		#save to view output image (test)
 		# utilitiesProcessImage.startDebug = True
-		if utilitiesProcessImage.startDebug == True:
+		if utilitiesProcessImage.startDebug:
 			# path_out =os.path.join(folder_save , f'{imgName}')
 			# cv2.imwrite(path_out, imgPumpName)
 			# path_out =os.path.join(folder_save , f'{imgName}')
@@ -128,6 +128,41 @@ class CheckSheetReader():
 			cv2.waitKey(0)
 			utilitiesProcessImage.startDebug = False
 		return errCode, infoStr
+
+	def readPumpValue(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_PUMP_VALUE]
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+				cv2.imshow("readPumpValue_outputImg", outputImg)
+		errCode, binImg = utilitiesProcessImage.convertBinaryImage(outputImg)
+		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
+		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)	
+	
+		# box_info = [0,0,binImg.shape[1], binImg.shape[0]]
+		
+		errCode, box_info = utilitiesProcessImage.getContentArea(binImg,2)
+		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,1)
+		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		padding = int(box_info[3]*0.3)
+		binImg = cv2.copyMakeBorder(binImg, padding, padding, padding, padding, cv2.BORDER_CONSTANT, None, value = 0)
+		if utilitiesProcessImage.startDebug:
+				cv2.imshow("readPumpValue_binImg", binImg)
+		ocrImg = binImg
+		ocrImg = cv2.bitwise_not(ocrImg)
+		ocrImg = cv2.cvtColor(ocrImg, cv2.COLOR_GRAY2BGR)
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readPumpValue_ocrImage",ocrImg)
+		# h,w,c = ocrImg.shape
+		# errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
+		idx_cls, outputText, bestconf = self.model.predict(ocrImg , False)
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f"readPumpValue_outputText: {outputText}")
+			cv2.waitKey()
+		return errCode, outputImg, outputText
 
 	def detectSelectionCheckMaterial(self, image):
 		errCode = ErrorCode.SUCCESS

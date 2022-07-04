@@ -1,3 +1,4 @@
+from tracemalloc import start
 import numpy
 import cv2
 from common import ErrorCode
@@ -540,7 +541,7 @@ def getContentArea(binaryImg, sizeKenel):
 	morphKernel2 = cv2.getStructuringElement(cv2.MORPH_RECT,(sizeKenel, sizeKenel))
 	dst = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
 	if startDebug:
-		cv2.imshow("cropMainArea_dst", dst)
+		cv2.imshow("getContentArea_dst", dst)
 	contours, hierarchies = cv2.findContours(dst, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	if contours is None or len(contours) == 0:
 		errCode = ErrorCode.INVALID_DATA
@@ -563,7 +564,7 @@ def getContentArea(binaryImg, sizeKenel):
 			y_max = binaryImg.shape[0]
 			x_max = binaryImg.shape[1]
 		if startDebug:
-			print(f'box: {(x_min,y_min,x_max,y_max)}')
+			print(f'getContentArea_box: {(x_min,y_min,x_max,y_max)}')
 	return errCode, [x_min,y_min,x_max - x_min,y_max - y_min]
 
 def findMainArea(binaryImg, sizeKenel):
@@ -571,21 +572,23 @@ def findMainArea(binaryImg, sizeKenel):
 	morphKernel2 = cv2.getStructuringElement(cv2.MORPH_RECT,(sizeKenel, sizeKenel))
 	dst = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
 	if startDebug:
-		cv2.imshow("cropMainArea_dst", dst)
+		print(f'findMainArea_image_size = {binaryImg.shape}')
+		cv2.imshow("findMainArea_dst", dst)
 	contours, hierarchies = cv2.findContours(dst, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	hierarchies = hierarchies[0]
 	y_min, x_min = binaryImg.shape
 	y_max, x_max = 0, 0
 	for i in range(len(contours)):
+		
 		if hierarchies[i][3] != -1:
 			continue
 		box = cv2.boundingRect(contours[i])
-		
+		if startDebug:
+			print(f'findMainArea_contour_box = {box}')
 		if box[3] < binaryImg.shape[0]/3 \
-			or box[3]/binaryImg.shape[0] > 0.8  \
 			or box[3]/box[2] > 3 or box[2]/box[3] > 3:
 			continue
-		# print(f'box = {box}')
+		
 		if x_min > box[0]:
 			x_min = box[0]
 		if y_min > box[1]:
@@ -600,7 +603,7 @@ def findMainArea(binaryImg, sizeKenel):
 		y_max = binaryImg.shape[0]
 		x_max = binaryImg.shape[1]
 	if startDebug:
-		print(f'box: {(x_min,y_min,x_max,y_max)}')
+		print(f'findMainArea_box: {(x_min,y_min,x_max,y_max)}')
 	return errCode, [x_min,y_min,x_max - x_min,y_max - y_min]
 
 # def filterLineText(binaryImg):
