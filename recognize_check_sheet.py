@@ -1,17 +1,22 @@
 import os
 import cv2
+import csv
+
+from cv2 import bitwise_not
+import Contours
+from enum import Enum
+import numpy as np
+import tensorflow as tf
+import keras
+
 import utilitiesProcessImage
 import DigitsDetection
 import SerialDetection
 import tess_recognitor
-from common import ErrorCode
 import constant
-import Contours
-from enum import Enum
-import numpy as np
-
-import csv
-
+from common import ErrorCode
+from multi_digit_model import build_digit_model
+from multi_digit_model import num_to_label
 
 
 folder_save = "results"
@@ -39,6 +44,9 @@ class CheckSheetReader():
 		# self.maskCheckMaterial = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
 		kernel = np.ones((11,11), np.uint8)
 		self.maskCheckMaterial = cv2.dilate(binaryImg, kernel, iterations=1)
+
+		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
+		self.multi_digit_model.load_weights('multi_digit_model/2021-11-26_3/digit_model_last_2021-11-26.h5')
 		
 	def readPositionCsvFile(self, filePath):
 		positionFile = open(filePath)
@@ -50,7 +58,7 @@ class CheckSheetReader():
 	def RecognizeForm(self, image, imgName):
 		errCode = ErrorCode.SUCCESS
 		
-		if utilitiesProcessImage.startDebug == True:
+		if utilitiesProcessImage.startDebug:
 			cv2.imshow("image", image)
 		# utilitiesProcessImage.startDebug = True
 		pumpName = ''
@@ -80,7 +88,7 @@ class CheckSheetReader():
 		# errCode, imgConstruction, construction = self.getString(image, self.position_infos[constant.TAG_CONSTRUCTION], OCRMode.JAPANESE)
 		side , electricType, index_contruction, index_maker = self.model.checkSelection(image)
 		# print(f'side , electricType = {(side , electricType)}')
-		errCode, imgPowerValue, powerValue = self.getString(image, self.position_infos[constant.TAG_POWER_VALUE], OCRMode.DIGIT)
+		errCode, imgPowerValue, powerValue = self.readPowerValue(image)
 		errCode, imgDynamicViscosity, dynamicViscosity = self.getString(image, self.position_infos[constant.TAG_DYNAMIC_VISCOSITY], OCRMode.DIGIT)
 		errCode, imgPumpValue, pumpValue = self.readPumpValue(image)
 		errCode, imgVValue , vValue = self.getString(image,self.position_infos[constant.TAG_V_VALUE], OCRMode.DIGIT)
@@ -114,6 +122,8 @@ class CheckSheetReader():
 			# cv2.imwrite(path_out, imgLotNo)
 			# path_out =os.path.join(folder_save , f'{imgName}')
 			# cv2.imwrite(path_out, imgPumpName)
+			# path_out =os.path.join(folder_save , f'{imgName}')
+			# cv2.imwrite(path_out, imgPowerValue)
 			# path_out =os.path.join(folder_save , f'{vValue}_{imgName}')
 			# cv2.imwrite(path_out, imgVValue)
 			# path_out =os.path.join(folder_save , f'{hzValue}_{imgName}')
@@ -125,9 +135,53 @@ class CheckSheetReader():
 			# path_out =os.path.join(folder_save , f'{serial_number}_{imgName}')
 			# cv2.imwrite(path_out, img_serial)
 			print(f'infoStr: {infoStr}')
-			cv2.waitKey(0)
+			# cv2.waitKey(0)
 			utilitiesProcessImage.startDebug = False
 		return errCode, infoStr
+
+
+	def readPowerValue(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_POWER_VALUE]
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readPowerValue_outputImg", outputImg)
+		errCode, binImg = utilitiesProcessImage.convertBinaryImage(outputImg)
+		errCodeRemoveLine, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
+		# binImg = bitwise_not(binImg)
+		# if utilitiesProcessImage.startDebug:
+		# 	cv2.imshow("readPowerValue_binImg1", binImg)
+		# 	cv2.waitKey()
+		errCode, box_info = utilitiesProcessImage.getContentArea(binImg,2)
+		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], binImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], binImg.shape[1])]
+		# outputImg = outputImg[max(box_info[1],0):min(box_info[1]+box_info[3], binImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], binImg.shape[1])]
+		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,1)
+		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], binImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], binImg.shape[1])]
+		# max_size = max(box_info[2],box_info[3])
+		# outputImg = outputImg[max(box_info[1] - (max_size-box_info[3])//2,0):min(box_info[1]+max_size, outputImg.shape[0]), max(box_info[0] - (max_size-box_info[2])//2, 0):min(box_info[0]+max_size, outputImg.shape[1])]
+		
+		binImg = utilitiesProcessImage.preprocess(binImg,(128,32))
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readPowerValue_binImg", binImg)
+		binImg = np.array(binImg).reshape(-1, 128, 32, 1)
+
+		result = self.multi_digit_model.predict(binImg)
+		decodedResult = keras.backend.get_value(keras.backend.ctc_decode(result, input_length=np.ones(result.shape[0])*result.shape[1], 
+																				greedy=False,
+																				beam_width=5,
+																				top_paths=1)[0][0])
+		outputText = num_to_label(decodedResult[0],'0123456789')
+		# outputImg = binImg
+		# outputText = ""
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'outputText = {outputText}')
+			# cv2.imshow("readPowerValue_pridict_image", binImg)
+			cv2.waitKey()
+
+		return errCode, outputImg, outputText
+
 
 	def readPumpValue(self, image):
 		errCode = ErrorCode.SUCCESS
