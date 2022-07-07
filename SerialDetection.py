@@ -5,10 +5,10 @@ matplotlib.use("Agg")
 import csv
 # import the necessary packages
 import keras
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.preprocessing.image import img_to_array
+from keras.preprocessing.image import img_to_array
 from keras.utils import to_categorical
 from keras.models import model_from_json
 
@@ -124,12 +124,12 @@ class SerialDetection():
 		self.num_classes = 36
 		# input image dimensions
 		self.img_rows, self.img_cols = 28, 28
-		json_file = open('models7_7/model_0707_crop.json', 'r')
+		json_file = open('models/model_0707_crop.json', 'r')
 		loaded_model_json = json_file.read()
 		json_file.close()
 		self.loaded_model = model_from_json(loaded_model_json)
 		# load weights into new model
-		self.loaded_model.load_weights("models7_7/model_weights_0707_crop.h5")
+		self.loaded_model.load_weights("models/model_weights_0707_crop.h5")
 		print("Loaded model from disk")
 		# self.loaded_model.summary()
 		self.img_debug = None
@@ -409,7 +409,7 @@ if __name__ == '__main__':
 		listCountContruction[data[0]] = int(data[5])
 		listMaker[data[0]] = int(data[4])
 	errors_data = {}
-	charErr = []
+	# charErr = []
 	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
@@ -438,9 +438,9 @@ if __name__ == '__main__':
 		if listSerialNo[basename] != serial_number:
 			count_SerialNo += 1
 			errors_data[basename] = 5
-			charErr.append(basename)
-			charErr.append(listSerialNo[basename])
-			charErr.append(serial_number)
+			# charErr.append(basename)
+			# charErr.append(listSerialNo[basename])
+			# charErr.append(serial_number)
 		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
 		print("=================================\n")
 		
@@ -451,4 +451,4 @@ if __name__ == '__main__':
 		cv2.imwrite(path_out, image)
 		# exit()
 	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo, errors_data)
-	print(charErr)
+	# print(charErr)
