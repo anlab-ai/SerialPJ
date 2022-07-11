@@ -93,7 +93,7 @@ def get_background(image , mask):
    
 	return blended
 
-def create_mask(image, est=0.2):
+def create_mask(image, est=0.5):
 	h, w = image.shape[:2]
 	mask = 255*np.ones((h,w),np.uint8)
 	ex = 0
@@ -128,12 +128,12 @@ class SerialDetection():
 		self.num_classes = 36
 		# input image dimensions
 		self.img_rows, self.img_cols = 28, 28
-		json_file = open(latin_hand_writting_style_jp_model + 'model_0616_crop.json', 'r')
+		json_file = open(latin_hand_writting_style_jp_model + 'model_0707_crop.json', 'r')
 		loaded_model_json = json_file.read()
 		json_file.close()
 		self.loaded_model = model_from_json(loaded_model_json)
 		# load weights into new model
-		self.loaded_model.load_weights(latin_hand_writting_style_jp_model + "model_weights_0616_crop.h5")
+		self.loaded_model.load_weights(latin_hand_writting_style_jp_model + "model_weights_0707_crop.h5")
 		print("Loaded model from disk")
 		# self.loaded_model.summary()
 		self.img_debug = None
@@ -174,7 +174,7 @@ class SerialDetection():
 	def predict(self, image, is_digit=False):
 		image = cv2.bitwise_not(image)
 		# image = common.preprocess(image)
-		image = resize_image(image , input_size=28)
+		image = resize_image(image , input_size=26)
 		image, mask = create_mask(image)
 		
 		image = get_background(image, mask)
@@ -258,13 +258,13 @@ class SerialDetection():
 		return index, scores[index-1]
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
-		box_crop = [968,830, 1220, 884]
+		box_crop = [968,830, 1220, 887]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		# print("image shape", img.shape)
 		listChar = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
-		est = 0
+		est = 2
 		h, w = img_serial.shape[:2]
 
 		for i, box in enumerate(listChar):
@@ -358,8 +358,8 @@ class SerialDetection():
 		
 if __name__ == '__main__':
 	model = SerialDetection()
-	# imagePaths = sorted(list(paths.list_images("/media/anlab/ssd_samsung_256/dungtd/SerialOCR/input/")))
-	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+	imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
+	# imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
 	folder_save = "results"
 	if not os.path.exists(folder_save):
 		os.mkdir(folder_save)
@@ -384,9 +384,11 @@ if __name__ == '__main__':
 		listCountContruction[data[0]] = int(data[5])
 		listMaker[data[0]] = int(data[4])
 	errors_data = {}
+	# charErr = []
+	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = "LK_image_from_pdf/LK-47VHH-02_page0.jpeg"
+		# imagePath = "LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
 		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
@@ -407,9 +409,13 @@ if __name__ == '__main__':
 		img_serial , serial_number= model.getSerialForm(image)
 		# with open("maker_detection.csv", 'a') as f:
 		# 	f.write(f'{basename},{index_maker}\n')
+		print("serial_number " , serial_number , listSerialNo[basename])
 		if listSerialNo[basename] != serial_number:
 			count_SerialNo += 1
-			# errors_data[basename] = 3
+			errors_data[basename] = 5
+			# charErr.append(basename)
+			# charErr.append(listSerialNo[basename])
+			# charErr.append(serial_number)
 		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
 		print("=================================\n")
 		
@@ -420,5 +426,4 @@ if __name__ == '__main__':
 		cv2.imwrite(path_out, image)
 		# exit()
 	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo, errors_data)
-	
-
+	# print(charErr)
