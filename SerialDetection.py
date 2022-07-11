@@ -283,7 +283,7 @@ class SerialDetection():
 		return index, scores[index-1]
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
-		box_crop = [968,830, 1220, 887]
+		box_crop = [968,830, 1233, 887]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		# print("image shape", img.shape)
 		listChar = Contours.splitCharFromForm(img_serial)
