@@ -138,7 +138,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
     for i in range(len(listboxmax1)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
         h = listboxmax1[i][1] - listboxmin1[i][1]
-        if h * w >  0.2*avgArea  and w > 0.1*avgAreaWidth and h > 0.15* avgAreaHeight: 
+        if h * w >  0.1*avgArea  and w > 0.1*avgAreaWidth and h > 0.15* avgAreaHeight: 
             listBoxMaxFilterSmall.append((listboxmax1[i][0],listboxmax1[i][1]))
             listBoxMinFilterSmall.append((listboxmin1[i][0],listboxmin1[i][1]))
     avgAreaWidth, avgAreaHeight, avgArea = getAvg(listBoxMaxFilterSmall,listBoxMinFilterSmall)
@@ -147,14 +147,16 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         w = listBoxMaxFilterSmall[i][0] - listBoxMinFilterSmall[i][0]
         h = listBoxMaxFilterSmall[i][1] - listBoxMinFilterSmall[i][1]
         # Normal number
-        if h > 0.6*avgAreaHeight and h * w >  0.5*avgArea : 
+        if h > 0.55*avgAreaHeight and h * w >  0.4*avgArea : 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 1
-        elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.15*avgArea: 
+        elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.095*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 0 small
         elif w-h<3 and w*h > 0.2*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
+        
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,goodBBox))
     # Filter serial number from goodBBox
     for i in range(len(goodBBox)): 
         w = goodBBox[i][1][0] - goodBBox[i][0][0] 
@@ -168,36 +170,60 @@ def removeBadContours(image,listboxmax1,listboxmin1):
             listChar.append([(goodBBox[i][0][0],goodBBox[i][0][1]),(goodBBox[i][1][0],goodBBox[i][1][1])])
             listCentroidy.append(int((goodBBox[i][0][1] + goodBBox[i][1][1])/2))
     avgCentroidy = np.average(listCentroidy)
-    # Filter by centroid
+    
+    # # Filter by centroid
+    # for i in range(len(listChar)):
+    #     centroidtemp = centroidscoor(listChar[i][1],listChar[i][0])
+    #     if abs(centroidtemp[1]-avgCentroidy) < 18 and listChar[i][1][1] + 3 > avgCentroidy:
+    #         listCharFilterByCentroid.append(listChar[i])
+    #         listMaxY.append(listChar[i][1][1])
+    # avgMaxy = np.average(listMaxY)
+    listCharFilterByAvgMaxy = []
+    # # Filter by avg coor(y)
+    # for i in range(len(listCharFilterByCentroid)):
+    #     if  listCharFilterByCentroid[i][1][1] + 12 > avgMaxy:
+    #         listCharFilterByAvgMaxy.append(listCharFilterByCentroid[i])
+    # avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByAvgMaxy)
+
+    listCharFilterByMdeian = []
+    listMedian = []
+    posMedianMax = 0
+    valMedianMax = 0
+    #Filter by median
+    for i in range(len(listChar)):
+        centroid = centroidscoor(listChar[i][1],listChar[i][0])[1]
+        tmp = []
+        tmp.append(centroid)
+        for j in range(len(listChar)):
+            centroid1 = centroidscoor(listChar[j][1],listChar[j][0])[1]
+            if abs(centroid-centroid1) < 10 and i != j:
+                tmp.append(centroid1)
+        listMedian.append(tmp)
+        if len(tmp) > valMedianMax:
+            valMedianMax = len(tmp)
+            posMedianMax = i      
+    avgMedian = np.average(listMedian[posMedianMax]) 
     for i in range(len(listChar)):
         centroidtemp = centroidscoor(listChar[i][1],listChar[i][0])
-        if abs(centroidtemp[1]-avgCentroidy) < 15 and listChar[i][1][1] + 3 > avgCentroidy:
-            listCharFilterByCentroid.append(listChar[i])
-            listMaxY.append(listChar[i][1][1])
-    avgMaxy = np.average(listMaxY)
-    listCharFilterByAvgMaxy = []
-    # Filter by avg coor(y)
-    for i in range(len(listCharFilterByCentroid)):
-        if  listCharFilterByCentroid[i][1][1] + 12 > avgMaxy:
-            listCharFilterByAvgMaxy.append(listCharFilterByCentroid[i])
-    avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByAvgMaxy)
-
+        if abs(centroidtemp[1]-avgMedian) < 10:
+            listCharFilterByMdeian.append(listChar[i])
+    avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByMdeian)
     # Filter by distance 
-    for i in range(len(listCharFilterByAvgMaxy)-1):
-        w = listCharFilterByAvgMaxy[i][1][0] - listCharFilterByAvgMaxy[i][0][0]
-        centroid = centroidscoor(listCharFilterByAvgMaxy[i][1],listCharFilterByAvgMaxy[i][0])
-        centroid1 = centroidscoor(listCharFilterByAvgMaxy[i+1][1],listCharFilterByAvgMaxy[i+1][0])
+    for i in range(len(listCharFilterByMdeian)-1):
+        w = listCharFilterByMdeian[i][1][0] - listCharFilterByMdeian[i][0][0]
+        centroid = centroidscoor(listCharFilterByMdeian[i][1],listCharFilterByMdeian[i][0])
+        centroid1 = centroidscoor(listCharFilterByMdeian[i+1][1],listCharFilterByMdeian[i+1][0])
         dist = math.sqrt((centroid[0] - centroid1[0])**2 + (centroid[1] - centroid[1])**2)
         if dist < 3.2*avgAreaHeight:
-            temp.append(listCharFilterByAvgMaxy[i])
+            temp.append(listCharFilterByMdeian[i])
             countChar +=1
-            if i + 2 == len(listCharFilterByAvgMaxy):
-                temp.append(listCharFilterByAvgMaxy[i+1])
+            if i + 2 == len(listCharFilterByMdeian):
+                temp.append(listCharFilterByMdeian[i+1])
                 listPhrase.append(temp)
                 countChar +=1
                 listCountPharse.append(countChar)
         else:
-            temp.append(listCharFilterByAvgMaxy[i])
+            temp.append(listCharFilterByMdeian[i])
             listPhrase.append(temp)
             countChar +=1
             listCountPharse.append(countChar)
@@ -205,7 +231,10 @@ def removeBadContours(image,listboxmax1,listboxmin1):
             temp = []
     for i in range(len(listPhrase)):
         listCharFilterByDistance.append(listPhrase[np.argmax(listCountPharse)])
-    listCharFilterByDistance = listCharFilterByDistance[0]
+    if len(listCharFilterByDistance)!=0:
+        listCharFilterByDistance = listCharFilterByDistance[0]
+    cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByDistance))
+
     # Split multichar 
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByDistance)
     listChar = []
@@ -299,7 +328,9 @@ def splitCharFromSerialNo(image):
     thresh = delLine(thresh)
     # Padding
     # thresh = padding(thresh)
-    
+    # kernel = np.ones((1,1), np.uint8)
+    # thresh = cv2.erode(thresh, kernel, iterations=1)
+    # thresh = cv2.dilate(thresh, kernel, iterations=1)
     # Finding countours
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     # cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
