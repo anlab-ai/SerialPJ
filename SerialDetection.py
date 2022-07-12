@@ -266,7 +266,7 @@ class SerialDetection():
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
-
+		score = {}
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
 			ymin = max(0 , box[0][1] -est)
@@ -280,6 +280,7 @@ class SerialDetection():
 				is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
 			serial_number += bestclass
+			score[i] = bestconf
 		# for i, box in enumerate(listChar):
 		# 	xmin = box[0][0]
 		# 	ymin = box[0][1]
@@ -288,7 +289,7 @@ class SerialDetection():
 			
 			# cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 		
-		return img_serial , serial_number
+		return img_serial , serial_number, score
 
 	def checkSelection(self, image):
 		index_in_out = 0

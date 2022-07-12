@@ -69,21 +69,28 @@ if __name__=="__main__":
 		# print(f'titles = {expectedResults["File"]}')
 		correctResults = [0] * len(expectedResults['File'])
 		missingResults = 0
+		alertResult = [0] * len(expectedResults['File'])
 		for file in results:
 			# print(f'file = {file}')
 			if file in expectedResults:
 				# print(f'len(results[{file}] = {len(results[file])}')
 				for i in range(len(results[file])):
 					if i in range(len(expectedResults[file])):
-						if expectedResults[file][i] in results[file][i] :
+						if expectedResults[file][i] == results[file][i] :
 							correctResults[i] += 1
+						elif len(results[file][i]) > 0 and results[file][i][0] == '[' and results[file][i][-1] == ']':
+								print(f'alert file : {file}')
+								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'ORingMaterial':
+							if expectedResults["File"][i] == 'SerialNo':
 								print(f'file : {file}')
+								print(f'results[file][i] = {results[file][i]}')
 			else:
 					missingResults += 1
 		for i in range(len(expectedResults['File'])):
 			print(f'{correctResults[i]}')
+		for i in range(len(expectedResults['File'])):
+			print(f'Alert: {alertResult[i]}')
 
 		print(f'Total result: {len(results)} , Missing: {missingResults}')		
 

@@ -1,6 +1,7 @@
 import os
 import cv2
 import csv
+import re
 
 from cv2 import bitwise_not
 import Contours
@@ -88,14 +89,14 @@ class CheckSheetReader():
 		# errCode, imgConstruction, construction = self.getString(image, self.position_infos[constant.TAG_CONSTRUCTION], OCRMode.JAPANESE)
 		side , electricType, index_contruction, index_maker = self.model.checkSelection(image)
 		# print(f'side , electricType = {(side , electricType)}')
-		errCode, imgPowerValue, powerValue = self.readPowerValue(image)
+		errCode, imgPowerValue, powerValue = self.getString(image, self.position_infos[constant.TAG_POWER_VALUE], OCRMode.DIGIT)
 		errCode, imgDynamicViscosity, dynamicViscosity = self.getString(image, self.position_infos[constant.TAG_DYNAMIC_VISCOSITY], OCRMode.DIGIT)
 		errCode, imgPumpValue, pumpValue = self.readPumpValue(image)
 		errCode, imgVValue , vValue = self.getString(image,self.position_infos[constant.TAG_V_VALUE], OCRMode.DIGIT)
 		errCode, imgHzValue , hzValue = self.getString(image,self.position_infos[constant.TAG_HZ_VALUE], OCRMode.DIGIT)
 		errCode, imgMinValue , minValue = self.getString(image,self.position_infos[constant.TAG_MIN_VALUE], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		# errCode, img_serial , serial_number = self.getString(image,self.position_infos[constant.TAG_SERIAL_NO], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		img_serial , serial_number = self.model.getSerialForm(image)
+		errCode, img_serial , serial_number = self.getString(image,self.position_infos[constant.TAG_SERIAL_NO], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
+		img_serial , serial_number = self.readSerialNo(image)
 		errCode, imgCheckMaterial, checkMaterialSelections = self.detectSelectionCheckMaterial(image)
 		flangePHeadMaterial = str(checkMaterialSelections[0])
 		valveMaterial = str(checkMaterialSelections[1])
@@ -139,6 +140,22 @@ class CheckSheetReader():
 			utilitiesProcessImage.startDebug = False
 		return errCode, infoStr
 
+	def readSerialNo(self, image):
+		img_serial , serial_number, scores = self.model.getSerialForm(image)
+		if len(serial_number) == 7:
+			pattern = re.compile("^[A-Z]")
+			if  serial_number[0] == '0':
+				serial_number = 'D' + serial_number[1:]
+		else:
+			if serial_number[0] == 'N':
+				serial_number = serial_number[0:1] + 'O' + serial_number[2:]
+
+		index = min(scores, key=scores.get)
+		pattern = re.compile("^[A-Z][0-9]{6}")
+		if (pattern.match(serial_number) and len(serial_number) != 7) or scores[index] < 0.3:
+				serial_number = f'[{serial_number}]'
+		return img_serial , serial_number
+		
 
 	def readPowerValue(self, image):
 		errCode = ErrorCode.SUCCESS

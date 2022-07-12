@@ -1,6 +1,6 @@
 File,PumpName,MFGNo,MotorLotNo,Maker,Contruction,Side,ElectricType,PowerValue,DynamicViscosity,PumpValue,V_Value,HzValue,MinValue,SerialNo,FlangePHeadMaterial,ValveMaterial,VGuideMaterial,GasketConfirmation,VMaterial,ORingMaterial,PullMotor,PushMotor,HoseType,ORingP20Material,Vit,Oil,UserGuide,AirMachine,SetVolt,Encapsulation,RealHz,RealMPa,ElectricCurrent,TestDeviceNo,TestDate,Tester,TestResult
 LK-11S6-02_page0.jpeg,LK-11S6-02,052204700,22D1118,1,1,2,2,0.20,4,B,440,60,1710,D203746,3,1,5,0,3,-1
-LK-11VC-02_page0.jpeg,LK-11VC-02,052204694,22D1118,1,1,2,2,0.20,4,B,200,50,1410,C2034635,0,0,1,0,0,0
+LK-11VC-02_page0.jpeg,LK-11VC-02,052204694,22D1118,1,1,2,2,0.20,4,B,200,50,1410,C203635,0,0,1,0,0,0
 LK-21VH-02_page0.jpeg,LK-21VH-02,052202983,22D215,1,1,2,2,0.20,4,B,200,50,1410,B203634,0,1,2,0,0,1
 LK-21VS-02_page0.jpeg,LK-21VS-02,052200699,22D215,1,1,2,2,0.20,4,B,200,50,1410,B203634,0,1,4,0,0,1
 LK-22VC-02_page0.jpeg,LK-22VC-02,052208148,22D225,1,1,2,2,0.20,4,B,200,50,1410,B203633,0,0,1,0,0,0
