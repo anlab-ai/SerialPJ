@@ -85,10 +85,7 @@ class CheckSheetReader():
 		errCode, imgPumpName, pumpName = self.readPumpName(image)
 		errCode, imgMFGNo, mfgNo = self.readMFGNo(image)
 		errCode, imgMotorLotNo , motorLotNo = self.getString(image,self.position_infos[constant.TAG_MOTOR_LOT_NO], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		# errCode, imgMaker, maker = self.getString(image, self.position_infos[constant.TAG_MAKER], OCRMode.JAPANESE)
-		# errCode, imgConstruction, construction = self.getString(image, self.position_infos[constant.TAG_CONSTRUCTION], OCRMode.JAPANESE)
 		side , electricType, index_contruction, index_maker = self.model.checkSelection(image)
-		# print(f'side , electricType = {(side , electricType)}')
 		errCode, imgPowerValue, powerValue = self.getString(image, self.position_infos[constant.TAG_POWER_VALUE], OCRMode.DIGIT)
 		errCode, imgDynamicViscosity, dynamicViscosity = self.getString(image, self.position_infos[constant.TAG_DYNAMIC_VISCOSITY], OCRMode.DIGIT)
 		errCode, imgPumpValue, pumpValue = self.readPumpValue(image)
@@ -355,7 +352,7 @@ class CheckSheetReader():
 		box = self.position_infos[constant.TAG_MFG_NO]
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
 		# utilitiesProcessImage.startDebug = True
-		if utilitiesProcessImage.startDebug == True:
+		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readMFGNo_outputImg",outputImg)
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
 		binImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
@@ -376,11 +373,15 @@ class CheckSheetReader():
 		# ocrImg = cv2.copyMakeBorder(ocrImg, padding, padding, padding, padding, cv2.BORDER_CONSTANT, None, value = 0)
 		
 		ocrImg = cv2.bitwise_not(ocrImg)
-		if utilitiesProcessImage.startDebug == True:
+		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readMFGNo_ocrImage",ocrImg)
 		h,w = ocrImg.shape
 		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
-		return errCode, outputImg, outputText.replace(' ', '')
+		outputText = outputText.replace(' ', '')
+		m = re.search('[0-9]{9}', outputText)
+		if m:
+				outputText = m.group(0)
+		return errCode, outputImg, outputText
 
 	def getString(self, image, box, mode):
 		errCode = ErrorCode.SUCCESS
