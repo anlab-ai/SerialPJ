@@ -42,17 +42,19 @@ def drawBBox(img,coor):
 def drawBBox2(img,coor):
     cv2.rectangle(img,(coor[0],coor[1]),(coor[2],coor[3]),(255,0,0),1)
     return img
-def convertColorToWhiteColor(image, threshold_Green_min = 80,threshold_Blue_min = 150,threshold_Red_min = 150, ratio=1.1):
+def convertColorToWhiteColor(image, Color = [True, True], threshold_Green_min = 80,threshold_Blue_min = 150,threshold_Red_min = 150, ratio=1.1):
 
     height,width = image.shape[0],image.shape[1]
     
     for loop1 in range(height):
         for loop2 in range(width):
             r,g,b = image[loop1,loop2]
-            if (g/(r+1) > ratio and g > threshold_Green_min and g>b) :
-                image[loop1,loop2] = 255,255,255
-            if (r/(g+1) > ratio and r > threshold_Red_min and r>b) :
-                image[loop1,loop2] = 255,255,255
+            if Color[1] == True:
+                if (g/(r+1) > ratio and g > threshold_Green_min and g>b) :
+                    image[loop1,loop2] = 255,255,255
+            if Color[0] == True:
+                if (r/(g+1) > ratio and r > threshold_Red_min and r>b) :
+                    image[loop1,loop2] = 255,255,255
     return image
 def delLine(image):
     maxValue = 255*image.shape[1]
@@ -153,7 +155,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.095*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 0 small
-        elif w-h<3 and w*h > 0.2*avgArea: 
+        elif w-h<3 and w*h > 0.15*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         
     # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,goodBBox))
@@ -169,8 +171,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         else:
             listChar.append([(goodBBox[i][0][0],goodBBox[i][0][1]),(goodBBox[i][1][0],goodBBox[i][1][1])])
             listCentroidy.append(int((goodBBox[i][0][1] + goodBBox[i][1][1])/2))
-    avgCentroidy = np.average(listCentroidy)
-    
+    # avgCentroidy = np.average(listCentroidy)
     # # Filter by centroid
     # for i in range(len(listChar)):
     #     centroidtemp = centroidscoor(listChar[i][1],listChar[i][0])
@@ -196,7 +197,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         tmp.append(centroid)
         for j in range(len(listChar)):
             centroid1 = centroidscoor(listChar[j][1],listChar[j][0])[1]
-            if abs(centroid-centroid1) < 10 and i != j:
+            if abs(centroid-centroid1) < 16 and i != j:
                 tmp.append(centroid1)
         listMedian.append(tmp)
         if len(tmp) > valMedianMax:
@@ -205,9 +206,11 @@ def removeBadContours(image,listboxmax1,listboxmin1):
     avgMedian = np.average(listMedian[posMedianMax]) 
     for i in range(len(listChar)):
         centroidtemp = centroidscoor(listChar[i][1],listChar[i][0])
-        if abs(centroidtemp[1]-avgMedian) < 10:
+        if abs(centroidtemp[1]-avgMedian) < 16:
             listCharFilterByMdeian.append(listChar[i])
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByMdeian)
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listChar))
+
     # Filter by distance 
     for i in range(len(listCharFilterByMdeian)-1):
         w = listCharFilterByMdeian[i][1][0] - listCharFilterByMdeian[i][0][0]
@@ -233,24 +236,44 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         listCharFilterByDistance.append(listPhrase[np.argmax(listCountPharse)])
     if len(listCharFilterByDistance)!=0:
         listCharFilterByDistance = listCharFilterByDistance[0]
-    cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByDistance))
-
-    # Split multichar 
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByDistance)
+    #Filter char for calculate avg
+    listCharPre = []
+    for i in range(len(listCharFilterByDistance)):
+        w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
+        h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
+        #Check multiChar
+        if w >1.2*h and h * w > 1.3*avgArea  or w >1.47*h and w > 1.2*avgAreaWidth:
+            multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
+            # Two char in one box
+            if w > 0.5*avgAreaWidth and w < 2.5*avgAreaWidth: 
+                listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
+                listCharPre.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+            # Three char in one box
+            elif w < 4*avgAreaWidth and w >= 2.5*avgAreaWidth:
+                listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
+                listCharPre.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
+                listCharPre.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+        # One char
+        else:
+            listCharPre.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
+    avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharPre)
+    # Split multichar 
     listChar = []
     cooryMax = []
     for i in range(len(listCharFilterByDistance)):
         w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
         h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
         #Check multiChar
-        if w >1.2*h and h * w > 1.3*avgArea or w >1.47*h:
+        if w >1.2*h and h * w > 1.8*avgArea and w > 1.7*avgAreaWidth or w >1.47*h and w > 1.2*avgAreaWidth:
             multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
             imgcp = image.copy()
             imgcp = imgcp[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
             # Two char in one box
-            if w > 0.5*avgAreaWidth and w < 2.5*avgAreaWidth: 
+            if w > 0.5*avgAreaWidth and w < 2.8*avgAreaWidth: 
                 imgcp2 = image[multiChar[0][1]:multiChar[1][1],multiChar[0][0]+int(w/2):multiChar[1][0]]
                 contourss,hierachy=cv2.findContours(imgcp2,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+                
                 #Area by pixels
                 # bigArea = 0
                 # for row in range(imgcp2.shape[0]):
@@ -258,7 +281,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
                 #         if imgcp2[row][col] > 240:
                 #             bigArea+=1
                 #Area by contours
-                # idMax = 0
+                # idMax = 0 
                 # for idcontourss in range(len(contourss)):
                 #     if len(contourss[idcontourss]) > len(contourss[idMax]):
                 #         idMax = idcontourss
@@ -287,7 +310,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
                     listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                     cooryMax.append(multiChar[1][1])
             # Three char in one box
-            elif w < 4*avgAreaWidth and w >= 2.5*avgAreaWidth:
+            elif w < 5*avgAreaWidth and w >= 2.8*avgAreaWidth:
                 listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
                 listChar.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
                 listChar.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
@@ -316,19 +339,19 @@ def resize_image_min( image,input_size=128):
 	height=int(height*scale)
 	image= cv2.resize(image,(width,height))
 	return image
-def splitCharFromSerialNo(image):
+def splitCharFromSerialNo(image,Color):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     SerialNo = image.copy()
-    SerialGray = convertColorToWhiteColor(SerialNo)
-
-    SerialGray = cv2.cvtColor(SerialGray, cv2.COLOR_BGR2GRAY)
+    SerialNo = convertColorToWhiteColor(SerialNo,Color = Color)
+    SerialGray = cv2.cvtColor(SerialNo, cv2.COLOR_BGR2GRAY)
     # Inverse 
     m, dev = cv2.meanStdDev(SerialGray)
     ret, thresh = cv2.threshold(SerialGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
     thresh = delLine(thresh)
     # Padding
     # thresh = padding(thresh)
-    # kernel = np.ones((1,1), np.uint8)
+    # kernel = np.ones((1,2), np.uint8)
+    # kernel1 = np.ones((2,), np.uint8)
     # thresh = cv2.erode(thresh, kernel, iterations=1)
     # thresh = cv2.dilate(thresh, kernel, iterations=1)
     # Finding countours
@@ -339,14 +362,14 @@ def splitCharFromSerialNo(image):
     listboxmax,listboxmin = getBoundingBox(contours)
     listChar = removeBadContours(thresh,listboxmax,listboxmin)
     return listChar
-def splitCharFromForm(image):
+def splitCharFromForm(image,Color = [True, True]):
     # image = resize_image_min(image,1280)
     # SerialNo = image[box[1]:box[3],box[0]:box[2]]
-    listChar = splitCharFromSerialNo(image)
+    listChar = splitCharFromSerialNo(image,Color)
     return listChar
 
 """---------------- InOut Area ---------------------"""
-def getBBoxFromInOut(image,listboxmax,listboxmin,areaRatio):
+def getBBoxFromInOut(image,SingleChar,listboxmax,listboxmin,areaRatio):
     listboxmax1,listboxmin1 = sortBBox(listboxmax,listboxmin)
     listBoxFilterSmall = []
     h,w = image.shape[:2]
@@ -359,7 +382,8 @@ def getBBoxFromInOut(image,listboxmax,listboxmin,areaRatio):
     for i in range(len(listboxmax)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
         h = listboxmax1[i][1] - listboxmin1[i][1]
-        if (w*h > areaRatio[0]*image.shape[0]*image.shape[1] and w > 3*h  and w < 10*h) or (w*h >areaRatio[1]*image.shape[0]*image.shape[1] and w < 5*h):
+        # print((w*h > areaRatio[0]*image.shape[0]*image.shape[1] and w > 3*h  and w < 10*h))
+        if (w*h > areaRatio[0]*image.shape[0]*image.shape[1] and w > 3*h  and w < 10*h) or (w*h >areaRatio[1]*image.shape[0]*image.shape[1] and w < 5*h) or (w*h >areaRatio[1]*image.shape[0]*image.shape[1] and 2*w<h):
             sum=0
             for row in range(listboxmin1[i][1],listboxmax1[i][1]):
                 for col in range(listboxmin1[i][0],listboxmax1[i][0]):
@@ -371,22 +395,38 @@ def getBBoxFromInOut(image,listboxmax,listboxmin,areaRatio):
                 coorXmax.append(listboxmax1[i][0])
                 coorYmax.append(listboxmax1[i][1])
                 coorYmin.append(listboxmin1[i][1])
+    # cv2.imwrite('results/img.jpg',drawBBox(image,listBoxFilterSmall))
     ret = False
     # imgBox = drawBBox (image,listBoxFilterSmall)
     # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/img.jpg',imgBox)
     #Concatenate char
     if len(listBoxFilterSmall)!= 0:
-        w = np.max(coorXmax) - np.min(coorXmin)
-        h = np.max(coorYmax) - np.min(coorYmin)
-        s = w*h
-        # if w > 1.5*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
-        if w > 0.7*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
-            listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
-            ret= True
+        if SingleChar == False:
+            w = np.max(coorXmax) - np.min(coorXmin)
+            h = np.max(coorYmax) - np.min(coorYmin)
+            s = w*h
+            # if w > 1.5*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
+            if w > 0.7*h and s > areaRatio[2]*image.shape[0]*image.shape[1]:
+                listBBoxChar =[int(np.min(coorXmin)),int(np.min(coorYmin)),int(np.max(coorXmax)),int(np.max(coorYmax))]
+                ret= True
+        else:
+            idMax = 0
+            Smax = 0
+            for i in range(len(listBoxFilterSmall)):
+                w = listBoxFilterSmall[i][1][0] - listBoxFilterSmall[i][0][0]
+                h = listBoxFilterSmall[i][1][1] - listBoxFilterSmall[i][0][1]
+                if w*h > Smax:
+                    Smax = w*h
+                    idMax = i
+            if Smax != 0:
+                listBBoxChar = [listBoxFilterSmall[idMax][0][0],listBoxFilterSmall[idMax][0][1],listBoxFilterSmall[idMax][1][0],listBoxFilterSmall[idMax][1][1]]  
+                ret = True
+             
     # print(ret)
     return ret, listBBoxChar
     
-def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
+
+def getInfo(image,Color = [True, True],SingleChar = False,threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
     imageOri = image.copy()
     image = resize_image_min(image,60)
     scale = imageOri.shape[0]/image.shape[0]
@@ -394,7 +434,7 @@ def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
     # box_contruction: areaRatio=[0.005,0.01,0.02]
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     InOut = image.copy()
-    InOutGray = convertColorToWhiteColor(InOut)
+    InOutGray = convertColorToWhiteColor(InOut,Color = Color)
     InOutGray = cv2.cvtColor(InOutGray, cv2.COLOR_BGR2GRAY)
     m, dev = cv2.meanStdDev(InOutGray)    
     ret, thresh = cv2.threshold(InOutGray, m[0][0] + 0.02*dev[0][0], 255, cv2.THRESH_BINARY_INV)
@@ -402,14 +442,13 @@ def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     listboxmax,listboxmin = getBoundingBox(contours)
     
-    ret, bounding_box = getBBoxFromInOut(thresh,listboxmax,listboxmin,areaRatio)
+    ret, bounding_box = getBBoxFromInOut(thresh,SingleChar,listboxmax,listboxmin,areaRatio)
     h, w = image.shape[:2]
     if ret :
         est = 0
         xmin = max(0 , bounding_box[0]-est)
         ymin = max(0 , bounding_box[1] -est)
         xmax = min(w , bounding_box[2] + est)
-
         ymax = min(h , bounding_box[3] + est)
         imcrop = thresh[ymin:ymax , xmin:xmax]
         m = cv2.mean(imcrop)
@@ -426,6 +465,7 @@ def getInfo(image, threshold = 0.17,areaRatio=[0.005,0.04,0.15]):
         bounding_box = [xmin, ymin, xmax, ymax]
         bounding_box= [int(bounding_box[0]*scale),int(bounding_box[1]*scale),int(bounding_box[2]*scale),int(bounding_box[3]*scale)]
     return ret, bounding_box
+
 # def splitBBboxFromElectricMotor(image,box=[1860,1145,2045,1215]):
 #     sizeImg=[1280,2308]
 #     image = cv2.resize(image,sizeImg)

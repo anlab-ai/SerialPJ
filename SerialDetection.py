@@ -196,6 +196,36 @@ class SerialDetection():
 		# self.feature_template.append(fea)
 		
 		
+	def predict_char(self, image, is_char=False):
+		image = cv2.bitwise_not(image)
+		# image = common.preprocess(image)
+		image = resize_image(image , input_size=26)
+		image, mask = create_mask(image)
+		
+		image = get_background(image, mask)
+		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
+		gray = cv2.resize(gray, (self.img_rows, self.img_cols))
+		# cv2.imwrite("output.jpg", gray)
+		gray = img_to_array(gray)
+		gray = np.array(gray, dtype="float") / 255.0
+		gray = np.expand_dims(gray, axis=0)
+		prediction = self.loaded_model.predict(gray)[0]
+		# print("prediction " , prediction, image.shape)
+		bestclass = ''
+		bestconf = -1
+		idx_cls = -1
+		for n in range(self.num_classes):
+			if is_char and n <= 9:
+				continue
+			if (prediction[n] > bestconf):
+				idx_cls = n
+				bestclass = self.labels[n]
+				bestconf = prediction[n]
+		# print("bestclass" , bestclass, is_digit)
+		# exit()
+		return idx_cls, bestclass, bestconf
+
+
 	def predict(self, image, is_digit=False):
 		image = cv2.bitwise_not(image)
 		# image = common.preprocess(image)
@@ -281,6 +311,152 @@ class SerialDetection():
 		index = np.argmin(scores) + 1
 		# print("scores " , scores)
 		return index, scores[index-1]
+
+	#Get input is image and return	MotorLotNo
+	def getMotorLotNoForm(self, image):
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*457),int(scale*806),int(scale*1099),int(scale*900)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		# print("image shape", img.shape)
+		listChar = Contours.splitCharFromForm(img_serial)
+		# print("listChar" , len(listChar) , listChar)
+		serial_number = "" 
+		est = 2
+		h, w = img_serial.shape[:2]
+		# img_serialcp = img_serial.copy()
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
+			is_char = False
+			if i  == 2  :
+				is_char = True
+			idx_cls, bestclass, bestconf = self.predict_char(im_char , is_char )
+			serial_number += bestclass
+			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
+		return img_serial , serial_number
+
+	#Get input is image and return power value
+	def getPowerValue(self, image):
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*1730),int(scale*1215),int(scale*1950),int(scale*1290)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		listChar = Contours.splitCharFromForm(img_serial)
+		serial_number = "" 
+		est = 2
+		h, w = img_serial.shape[:2]
+		img_serialcp = img_serial.copy()
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
+			is_digit = True
+			# if i  != 1  :
+			# 	is_digit = True
+			if i == 1:
+				serial_number+='.'	
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			serial_number+=bestclass
+			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
+		return img_serialcp , serial_number
+
+	#Get input is image and return Dynamic Viscosity value
+	def getDynamicViscosity(self, image):
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*2045),int(scale*1220),int(scale*2168),int(scale*1281)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		ret, bbox = Contours.getInfo(img_serial,SingleChar = True,areaRatio=[0.1,0.1,0.002])
+		im_crop = img_serial[bbox[1]:bbox[3] , bbox[0]:bbox[2]]
+		idx_cls, bestclass, bestconf = self.predict(im_crop , is_digit=True )
+		# cv2.rectangle(img_serial,(bbox[0], bbox[1]),(bbox[2], bbox[3]),(255,0,0),1)
+		# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
+		return img_serial , bestclass
+
+	#Get input is image and return V value
+	def getVValue(self, image):	
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*1875),int(scale*1367),int(scale*2389),int(scale*1445)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		imgcp = img_serial.copy()
+		listChar = Contours.splitCharFromForm(img_serial,Color = [False, True])
+		serial_number = "" 
+		est = 2
+		h, w = img_serial.shape[:2]
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			is_digit = True
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit)
+			serial_number += bestclass
+			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		return imgcp , serial_number
+
+	#Get input is image and return Hz value
+	def getHzValue(self, image):	
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*1875),int(scale*1450),int(scale*2389),int(scale*1523)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		imgcp = img_serial.copy()
+		listChar = Contours.splitCharFromForm(img_serial)
+		serial_number = "" 
+		est = 2
+		h, w = img_serial.shape[:2]
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			is_digit = True
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			serial_number += bestclass
+			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		return imgcp , serial_number
+
+	#Get input is image and return min value
+	def getMinValue(self, image):	
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = self.image_size/image.shape[1]
+		box_crop = [int(scale*1885),int(scale*1541),int(scale*2389),int(scale*1625)]
+		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		imgcp = img_serial.copy()
+		listChar = Contours.splitCharFromForm(img_serial)
+		serial_number = "" 
+		est = 2
+		h, w = img_serial.shape[:2]
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			is_digit = True
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			serial_number += bestclass
+			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		return imgcp , serial_number
+	#Get input is image and return serial number
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
 		box_crop = [968,830, 1233, 887]
@@ -291,7 +467,6 @@ class SerialDetection():
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
-
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
 			ymin = max(0 , box[0][1] -est)
@@ -322,7 +497,7 @@ class SerialDetection():
 		index_maker = 0
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
-		box_in_out = [int(scale*950),int(scale*585),int(scale*1063),int(scale*627)]
+		box_in_out = [int(scale*950),int(scale*575),int(scale*1063),int(scale*627)]
 		# print("box_in_out" , box_in_out)
 		im_in_out = image[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
