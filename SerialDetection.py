@@ -497,7 +497,7 @@ class SerialDetection():
 		index_maker = 0
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
-		box_in_out = [int(scale*950),int(scale*575),int(scale*1063),int(scale*627)]
+		box_in_out = [int(scale*950),int(scale*585),int(scale*1063),int(scale*627)]
 		# print("box_in_out" , box_in_out)
 		im_in_out = image[box_in_out[1]:box_in_out[3],box_in_out[0]:box_in_out[2]]
 		# print("image shape", img.shape)
