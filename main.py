@@ -14,7 +14,6 @@ import imutils
 import constant
 import csv
 # import SerialDetection
-# import tess_recognitor
 outputFolder = 'output'
 outputFile = 'results.csv'
 checkSheetReader = recognize_check_sheet.CheckSheetReader()

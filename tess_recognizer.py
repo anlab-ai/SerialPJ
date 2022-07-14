@@ -1,7 +1,7 @@
 import cv2
 import pytesseract
 
-class TessRecognitor():
+class TessRecognizer():
 	def __init__(self):
 		self.tess_config_eng = r'-l eng --psm 7 --oem 1'
 		self.tess_config_digits = r'-l digits --psm 10 --oem 1'

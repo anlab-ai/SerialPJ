@@ -13,7 +13,7 @@ import keras
 import utilitiesProcessImage
 import DigitsDetection
 import SerialDetection
-import tess_recognitor
+import tess_recognizer
 import constant
 from common import ErrorCode
 from multi_digit_model import build_digit_model
@@ -36,7 +36,7 @@ class CheckSheetReader():
 	def __init__(self):
 		self.model = SerialDetection.SerialDetection()
 		self.hwDigitsStyleJpModel = DigitsDetection.DigitDetection()
-		self.tessRecognitor = tess_recognitor.TessRecognitor()
+		self.tessRecognizer = tess_recognizer.TessRecognizer()
 		self.readPositionCsvFile("./position_forms/lk.csv")
 		checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
 		gray = cv2.cvtColor(checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
@@ -415,13 +415,13 @@ class CheckSheetReader():
 
 		elif mode == OCRMode.ENGLISH:
 			outputImg = image[box[1]:box[3],box[0]:box[2]]
-			outputStr = self.tessRecognitor.getEnglishString(outputImg)
+			outputStr = self.tessRecognizer.getEnglishString(outputImg)
 		elif mode == OCRMode.DIGIT:
 			outputImg = image[box[1]:box[3],box[0]:box[2]]
-			outputStr = self.tessRecognitor.getDigitString(outputImg)
+			outputStr = self.tessRecognizer.getDigitString(outputImg)
 		elif mode == OCRMode.JAPANESE:
 			outputImg = image[box[1]:box[3],box[0]:box[2]]
-			outputStr = self.tessRecognitor.getJapaneseString(outputImg)
+			outputStr = self.tessRecognizer.getJapaneseString(outputImg)
 		
 		if outputStr is None:
 			outputStr = ''
