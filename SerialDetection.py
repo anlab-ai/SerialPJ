@@ -622,26 +622,14 @@ if __name__ == '__main__':
 	count_index_contruction = 0
 	count_SerialNo = 0
 	count_maker = 0
-	count_PowerValue  = 0
-	count_MotorLotNo = 0
-	count_DynamicViscosity = 0
-	count_VValue = 0
-	count_HzValue  = 0
-	count_MinValue  = 0
  
 	listCountInout = {}
 	listCountElectric = {}
 	listCountContruction = {}
 	listSerialNo = {}
 	listMaker = {}
-	listPowerValue = {}
-	listMotorLotNo = {}
-	listDynamicViscosity = {}
-	listVValue = {}
-	listHzValue = {}
-	listMinValue = {}
 	with open('expected_result_70_images_update.csv') as csv_file:
-		csv_reader = csv_file.readlines()	
+			csv_reader = csv_file.readlines()	
 	for i in range(1,len(csv_reader)):
 		data = csv_reader[i].split(',')
 		listCountInout[data[0]] = int(data[6])
@@ -649,24 +637,18 @@ if __name__ == '__main__':
 		listSerialNo[data[0]] = data[14].strip()
 		listCountContruction[data[0]] = int(data[5])
 		listMaker[data[0]] = int(data[4])
-		listMotorLotNo[data[0]] = data[3].strip()
-		listPowerValue[data[0]] = data[8].strip()
-		listDynamicViscosity[data[0]] = data[9].strip()
-		listVValue[data[0]] = data[11].strip()
-		listHzValue[data[0]] = data[12].strip()
-		listMinValue[data[0]] = data[13].strip()
 	errors_data = {}
-	charErr = []
+	# charErr = []
 	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
 	for imagePath in imagePaths:
 		print("path " ,  imagePath)
-		# imagePath = 	"/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf/LK-F47S6-04F_page0.jpeg"
+		# imagePath = "LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg"
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
 		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
-		# print(index_in_out , index_electric, index_contruction, index_maker)
+		print(index_in_out , index_electric, index_contruction, index_maker)
 		if listCountInout[basename] != index_in_out:
-			# print("basename errors " , basename)
+			print("basename errors " , basename)
 			count_index_in_out +=1
 			errors_data[basename] = 1
 		if listCountElectric[basename] != index_electric:
@@ -678,71 +660,24 @@ if __name__ == '__main__':
 		if listMaker[basename] != index_maker:
 			count_maker +=1
 			errors_data[basename] = 4
-		#SerialNo
 		img_serial , serial_number= model.getSerialForm(image)
+		# with open("maker_detection.csv", 'a') as f:
+		# 	f.write(f'{basename},{index_maker}\n')
+		print("serial_number " , serial_number , listSerialNo[basename])
 		if listSerialNo[basename] != serial_number:
 			count_SerialNo += 1
 			errors_data[basename] = 5
-			path_out =os.path.join(folder_save , f'{serial_number}_{listSerialNo[basename]}_{basename}')
-			print("serial_number " , serial_number , listSerialNo[basename])
-			# cv2.imwrite(path_out, img_serial)
-		#MotorLotNo
-		img_MotorLotNo , MotorLotNo_number= model.getMotorLotNoForm(image)
-		if listMotorLotNo[basename] != MotorLotNo_number:
-			count_MotorLotNo += 1
-			path_out =os.path.join(folder_save , f'{MotorLotNo_number}_{listMotorLotNo[basename]}_{basename}')
-			charErr.append([MotorLotNo_number,listMotorLotNo[basename],basename])
-			print("MotorLotNo " , MotorLotNo_number , listMotorLotNo[basename])
-			# cv2.imwrite(path_out, img_MotorLotNo)
-		#PowerValue
-		img_PowerValue , PowerValue_number= model.getPowerValue(image)
-		if listPowerValue[basename] != PowerValue_number:
-			count_PowerValue += 1
-			path_out =os.path.join(folder_save , f'{PowerValue_number}_{listPowerValue[basename]}_{basename}')
-			print("PowerValue " , PowerValue_number , listPowerValue[basename])
-			# cv2.imwrite(path_out, img_PowerValue)
-		#DynamicViscosity
-		img_DynamicViscosity , DynamicViscosity_number= model.getDynamicViscosity(image)
-		if listDynamicViscosity[basename] != DynamicViscosity_number:
-			count_DynamicViscosity += 1
-			path_out =os.path.join(folder_save , f'{DynamicViscosity_number}_{listDynamicViscosity[basename]}_{basename}')
-			print("DynamicViscosity " , DynamicViscosity_number , listDynamicViscosity[basename])
-			# cv2.imwrite(path_out, img_DynamicViscosity)
-		#VValue
-		img_VValue , VValue_number= model.getVValue(image)
-		if listVValue[basename] != VValue_number:
-			count_VValue += 1
-			path_out =os.path.join(folder_save , f'{VValue_number}_{listVValue[basename]}_{basename}')
-			print("VValue " , VValue_number , listVValue[basename])
-			# cv2.imwrite(path_out, img_VValue)
-		#HzValue
-		img_HzValue , HzValue_number= model.getHzValue(image)
-		if listHzValue[basename] != HzValue_number:
-			count_HzValue += 1
-			path_out =os.path.join(folder_save , f'{HzValue_number}_{listHzValue[basename]}_{basename}')
-			print("HzValue " , HzValue_number , listHzValue[basename])
-			# cv2.imwrite(path_out, img_HzValue)
-		#MinValue
-		img_MinValue , MinValue_number= model.getMinValue(image)
-		if listMinValue[basename] != MinValue_number:
-			count_MinValue += 1
-			path_out =os.path.join(folder_save , f'{MinValue_number}_{listMinValue[basename]}_{basename}')
-			print("MinValue " , MinValue_number , listMinValue[basename])
-			# cv2.imwrite(path_out, img_MinValue)
+			# charErr.append(basename)
+			# charErr.append(listSerialNo[basename])
+			# charErr.append(serial_number)
+		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
 		print("=================================\n")
+		
+		# image = resize_image_min(image,input_size=1280 )
+		# cv2.rectangle(image,(box_info[0], box_info[1]),(box_info[2], box_info[3]),(255,0,0),1)
+		# cv2.rectangle(image,(box_info3[0], box_info3[1]),(box_info3[2], box_info3[3]),(255,0,0),2)
+		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{index_contruction}_{index_maker}_{basename}')
+		cv2.imwrite(path_out, image)
 		# exit()
-	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo)
-	print('Error MotorLotNo:',count_MotorLotNo)
-	print('Error PowerValue:',count_PowerValue)
-	print('Error DynamicViscosity:',count_DynamicViscosity)
-	print('Error VValue:',count_VValue)
-	print('Error HzValue:',count_HzValue)
-	print('Error MinValue:',count_MinValue)
-	# for i in charErr:
-	# 	print(i[2])
-	# 	if len(i[0]) == len(i[1]):
-	# 		for j in range(len(i[0])):
-	# 			if i[0][j] != i[1][j]:
-	# 				print(i[0][j],i[1][j])
-	# 	else:
-	# 		print(i[0],i[1])
+	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo, errors_data)
+	# print(charErr)
