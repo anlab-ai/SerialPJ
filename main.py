@@ -75,7 +75,7 @@ if __name__=="__main__":
 				# print(f'len(results[{file}] = {len(results[file])}')
 				for i in range(len(results[file])):
 					if i in range(len(expectedResults[file])):
-						if expectedResults[file][i] == results[file][i] :
+						if expectedResults[file][i] in results[file][i] :
 							correctResults[i] += 1
 						elif len(results[file][i]) > 0 and results[file][i][0] == '[' and results[file][i][-1] == ']':
 								print(f'alert file : {file}')
