@@ -27,6 +27,7 @@ from sklearn import preprocessing
 import Contours 
 from model_CRNN_3_channels import get_model
 from parameters import letters
+import imutils
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.3)
 config = tf.ConfigProto(gpu_options=gpu_options)
@@ -384,11 +385,10 @@ class SerialDetection():
 			ymax = min(h , box[1][1] + est)
 			
 			im_char = img_serial[ymin:ymax, xmin:xmax]
-			
-			is_char = False
-			if i  == 2  :
-				is_char = True
-			idx_cls, bestclass, bestconf = self.predict_char(im_char , is_char )
+			is_digit = False
+			if i != 2 and i != 3:
+				is_digit = True
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
 			serial_number += bestclass
 			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
@@ -439,6 +439,7 @@ class SerialDetection():
 
 	#Get input is image and return V value
 	def getVValue(self, image):	
+		trueLabels = ['440','400','220','200','380']
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1367),int(scale*2389),int(scale*1445)]
@@ -460,10 +461,21 @@ class SerialDetection():
 			serial_number += bestclass
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		
+		for label in trueLabels:
+			serial_numberFlag = serial_number
+			while len(serial_numberFlag) != 1:
+				if label.find(serial_numberFlag,0,len(serial_numberFlag)) != -1:
+					return imgcp,label
+				elif len(serial_numberFlag) >2 and serial_numberFlag.find(label) != -1:
+					return imgcp,label		
+				else:
+					serial_numberFlag = serial_numberFlag[:-1]			
 		return imgcp , serial_number
 
 	#Get input is image and return Hz value
 	def getHzValue(self, image):	
+		trueLabels = ['50','60']
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1450),int(scale*2389),int(scale*1523)]
@@ -485,6 +497,15 @@ class SerialDetection():
 			serial_number += bestclass
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		for label in trueLabels:
+			serial_numberFlag = serial_number
+			while len(serial_numberFlag) != 1:
+				if label.find(serial_numberFlag,0,len(serial_numberFlag)) != -1:
+					return imgcp,label
+				elif len(serial_numberFlag) >1 and serial_numberFlag.find(label) != -1:
+					return imgcp,label		
+				else:
+					serial_numberFlag = serial_numberFlag[:-1]		
 		return imgcp , serial_number
 
 	#Get input is image and return min value
@@ -609,7 +630,6 @@ class SerialDetection():
 		# box_info3 = [box_info3[0] + box_contruction[0], box_info3[1] + box_contruction[1] , box_info3[2] + box_contruction[0] , box_info3[3] + box_contruction[1]]
   		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
 		return index_in_out , index_electric, index_contruction, index_maker
-		
 if __name__ == '__main__':
 	model = SerialDetection()
 	imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
