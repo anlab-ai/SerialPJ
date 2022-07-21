@@ -57,7 +57,8 @@ if __name__=="__main__":
 			print("Invalid parameters provided")
 		files = os.listdir(args.input)
 		for file in files:
-			readImage(args.input + "/" + file)
+			if file.endswith(".jpeg"):
+				readImage(args.input + "/" + file)
 
 		#statistic
 		errCode, expectedResults = readResults("expected_result_70_images.csv")
@@ -75,21 +76,21 @@ if __name__=="__main__":
 				# print(f'len(results[{file}] = {len(results[file])}')
 				for i in range(len(results[file])):
 					if i in range(len(expectedResults[file])):
-						if expectedResults[file][i] in results[file][i] :
+						if expectedResults[file][i] == results[file][i] :
 							correctResults[i] += 1
 						elif len(results[file][i]) > 0 and results[file][i][0] == '[' and results[file][i][-1] == ']':
 								print(f'alert file : {file}')
 								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'SerialNo':
+							if expectedResults["File"][i] == 'PumpName':
 								print(f'file : {file}')
 								print(f'results[file][i] = {results[file][i]}')
 			else:
 					missingResults += 1
 		for i in range(len(expectedResults['File'])):
 			print(f'{correctResults[i]}')
-		for i in range(len(expectedResults['File'])):
-			print(f'Alert: {alertResult[i]}')
+		# for i in range(len(expectedResults['File'])):
+		# 	print(f'Alert: {alertResult[i]}')
 
 		print(f'Total result: {len(results)} , Missing: {missingResults}')		
 

@@ -340,6 +340,15 @@ class CheckSheetReader():
 		h,w = ocrImg.shape
 		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
 		outputText = outputText.replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-L','-1').replace(' ','')
+		listRegex = ['[A-Z]{2}-[0-9,A-Z]{4,5}-[0-9,A-Z]{2,3}'\
+			, '[A-Z]{2}-[0-9,A-Z]{6}-[0-9,A-Z]{2,3}'\
+			, '[A-Z]{2}-[0-9,A-Z]{6}']
+		for i in range(len(listRegex)):
+			m = re.search(listRegex[i], outputText)
+			if m:
+					outputText = m.group(0)
+					break
+			
 		if utilitiesProcessImage.startDebug:
 			utilitiesProcessImage.startDebug = False
 			print(f"outputText: {outputText}")
