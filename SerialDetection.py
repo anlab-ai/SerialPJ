@@ -1,7 +1,9 @@
 # set the matplotlib backend so figures can be saved in the background
+from itertools import count
 from posixpath import split
+from tkinter.tix import Tree
 import matplotlib
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import csv
 # import the necessary packages
 import keras
@@ -25,6 +27,7 @@ from sklearn import preprocessing
 import Contours 
 from model_CRNN_3_channels import get_model
 from parameters import letters
+import imutils
 
 latin_hand_writting_style_jp_model = "./latin_hand_writting_style_jp_model/"
 model_compares_text_options = "./model_compares_text_options/"
@@ -170,7 +173,6 @@ class SerialDetection():
 			self.feature_template.append(fea)
 			# exit()
 		
-		
 	def predict_char(self, image, is_char=False):
 		image = cv2.bitwise_not(image)
 		# image = common.preprocess(image)
@@ -286,7 +288,58 @@ class SerialDetection():
 		index = np.argmin(scores) + 1
 		# print("scores " , scores)
 		return index, scores[index-1]
-
+	def groupByColor(self,img_serial,listChar,color,est):
+		listR = []
+		listG = []
+		listB = []
+		listb = []
+		h, w = img_serial.shape[:2]
+		for i, box in enumerate(listChar):
+			xmin = max(0 , box[0][0]-est)
+			ymin = max(0 , box[0][1] -est)
+			xmax = min(w , box[1][0] + est)
+			ymax = min(h , box[1][1] + est)
+			im_char = img_serial[ymin:ymax, xmin:xmax]
+			# plt.imshow(im_char)
+			# plt.show()
+			sumBlack = 0
+			sumGreen = 0
+			sumBlue = 0
+			sumRed = 0
+			im_char = Contours.convertColorToWhiteColor(im_char,color)
+			w_char,h_char = im_char.shape[1],im_char.shape[0]
+			for loop1 in range(h_char):
+				for loop2 in range(w_char):
+					r,g,b = im_char[loop1,loop2]
+					if (g/(r+1) > 1.1 and g > 80 and g>b):
+						sumGreen += 1
+					elif (r/(g+1) > 1.1 and r > 150 and r>b):
+						sumRed += 1
+					elif (b/(r+1) > 1.1 and b > 130 and b>g):
+						sumBlue += 1
+					elif r <220 and g<220 and b <220:
+						sumBlack += 1
+			mainColor = np.argmax([sumRed,sumGreen,sumBlue,sumBlack])
+			# print(sumRed,sumGreen,sumBlue,sumBlack)
+			if mainColor == 0:
+				listR.append([(xmin,ymin),(xmax,ymax)])
+			elif mainColor == 1:
+				listG.append([(xmin,ymin),(xmax,ymax)])
+			elif mainColor == 2:
+				listB.append([(xmin,ymin),(xmax,ymax)])
+			else:
+				listb.append([(xmin,ymin),(xmax,ymax)])
+		# print(listR,listG,listB,listb)
+		posMax = np.argmax([len(listR),len(listG),len(listB),len(listb)])
+		if posMax == 0:
+			listCharFilterColor = listR
+		elif mainColor == 1:
+			listCharFilterColor = listG
+		elif mainColor == 2:
+			listCharFilterColor = listB
+		else:
+			listCharFilterColor = listb
+		return listCharFilterColor
 	#Get input is image and return	MotorLotNo
 	def getMotorLotNoForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
@@ -307,11 +360,10 @@ class SerialDetection():
 			ymax = min(h , box[1][1] + est)
 			
 			im_char = img_serial[ymin:ymax, xmin:xmax]
-			
-			is_char = False
-			if i  == 2  :
-				is_char = True
-			idx_cls, bestclass, bestconf = self.predict_char(im_char , is_char )
+			is_digit = False
+			if i != 2 and i != 3:
+				is_digit = True
+			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
 			serial_number += bestclass
 			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
@@ -362,6 +414,7 @@ class SerialDetection():
 
 	#Get input is image and return V value
 	def getVValue(self, image):	
+		trueLabels = ['440','400','220','200','380']
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1367),int(scale*2389),int(scale*1445)]
@@ -371,41 +424,68 @@ class SerialDetection():
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
+		listChar = self.groupByColor(img_serial,listChar,[False,True],est)
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
 			ymin = max(0 , box[0][1] -est)
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			im_char = img_serial[ymin:ymax, xmin:xmax]
+			m, dev = cv2.meanStdDev(im_char)
+			charGray = cv2.cvtColor(im_char, cv2.COLOR_BGR2GRAY)
+			ret, thresh = cv2.threshold(charGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+			if np.count_nonzero(thresh) < 0.12*thresh.shape[0]*thresh.shape[1]:
+				continue
 			is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit)
 			serial_number += bestclass
-			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		
+		for label in trueLabels:
+			serial_numberFlag = serial_number
+			while len(serial_numberFlag) != 1:
+				if label.find(serial_numberFlag,0,len(serial_numberFlag)) != -1:
+					return imgcp,label
+				elif len(serial_numberFlag) >2 and serial_numberFlag.find(label) != -1:
+					return imgcp,label		
+				else:
+					serial_numberFlag = serial_numberFlag[:-1]			
 		return imgcp , serial_number
 
 	#Get input is image and return Hz value
 	def getHzValue(self, image):	
+		trueLabels = ['50','60']
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1450),int(scale*2389),int(scale*1523)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		imgcp = img_serial.copy()
 		listChar = Contours.splitCharFromForm(img_serial)
-		serial_number = "" 
 		est = 2
+		serial_number = "" 
 		h, w = img_serial.shape[:2]
+		listChar = self.groupByColor(img_serial,listChar,[False,True],est)
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
-			ymin = max(0 , box[0][1] -est)
-			xmax = min(w , box[1][0] + est)
-			ymax = min(h , box[1][1] + est)
+			ymin = max(0 , box[0][1]-est)
+			xmax = min(w , box[1][0]+est)
+			ymax = min(h , box[1][1]+est)
 			im_char = img_serial[ymin:ymax, xmin:xmax]
 			is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
 			serial_number += bestclass
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
+		for label in trueLabels:
+			serial_numberFlag = serial_number
+			while len(serial_numberFlag) != 1:
+				if label.find(serial_numberFlag,0,len(serial_numberFlag)) != -1:
+					return imgcp,label
+				elif len(serial_numberFlag) >1 and serial_numberFlag.find(label) != -1:
+					return imgcp,label		
+				else:
+					serial_numberFlag = serial_numberFlag[:-1]		
 		return imgcp , serial_number
 
 	#Get input is image and return min value
@@ -533,7 +613,6 @@ class SerialDetection():
 		# box_info3 = [box_info3[0] + box_contruction[0], box_info3[1] + box_contruction[1] , box_info3[2] + box_contruction[0] , box_info3[3] + box_contruction[1]]
   		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
 		return index_in_out , index_electric, index_contruction, index_maker
-		
 if __name__ == '__main__':
 	model = SerialDetection()
 	imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
