@@ -456,10 +456,15 @@ class SerialDetection():
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			im_char = img_serial[ymin:ymax, xmin:xmax]
+			m, dev = cv2.meanStdDev(im_char)
+			charGray = cv2.cvtColor(im_char, cv2.COLOR_BGR2GRAY)
+			ret, thresh = cv2.threshold(charGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+			if np.count_nonzero(thresh) < 0.12*thresh.shape[0]*thresh.shape[1]:
+				continue
 			is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit)
 			serial_number += bestclass
-			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
 		
 		for label in trueLabels:
