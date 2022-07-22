@@ -209,7 +209,7 @@ class CheckSheetReader():
 		
 		errCode, box_info = utilitiesProcessImage.getContentArea(binImg,2)
 		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
-		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,1)
+		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2,ratioThreshold=7)
 		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
 		padding = int(box_info[3]*0.3)
 		binImg = cv2.copyMakeBorder(binImg, padding, padding, padding, padding, cv2.BORDER_CONSTANT, None, value = 0)
@@ -222,7 +222,7 @@ class CheckSheetReader():
 			cv2.imshow("readPumpValue_ocrImage",ocrImg)
 		# h,w,c = ocrImg.shape
 		# errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		idx_cls, outputText, bestconf = self.model.predict(ocrImg , False)
+		idx_cls, outputText, bestconf = self.model.predict_char(ocrImg , True)
 		if utilitiesProcessImage.startDebug:
 			utilitiesProcessImage.startDebug = False
 			print(f"readPumpValue_outputText: {outputText}")

@@ -566,7 +566,7 @@ def getContentArea(binaryImg, sizeKenel):
 			print(f'getContentArea_box: {(x_min,y_min,x_max,y_max)}')
 	return errCode, [x_min,y_min,x_max - x_min,y_max - y_min]
 
-def findMainArea(binaryImg, sizeKenel,  minHeightThreshold = 0.33, maxHeightThreshold = 1):
+def findMainArea(binaryImg, sizeKenel,  minHeightThreshold = 0.33, maxHeightThreshold = 1, ratioThreshold = 3):
 	errCode = ErrorCode.SUCCESS
 	morphKernel2 = cv2.getStructuringElement(cv2.MORPH_RECT,(sizeKenel, sizeKenel))
 	dst = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
@@ -586,7 +586,7 @@ def findMainArea(binaryImg, sizeKenel,  minHeightThreshold = 0.33, maxHeightThre
 			print(f'findMainArea_contour_box = {box}')
 		if box[3] < binaryImg.shape[0]*minHeightThreshold \
 			or box[3] > binaryImg.shape[0]*maxHeightThreshold  \
-			or box[3]/box[2] > 3 or box[2]/box[3] > 3:
+			or box[3]/box[2] > ratioThreshold or box[2]/box[3] > ratioThreshold:
 			continue
 		
 		if x_min > box[0]:
