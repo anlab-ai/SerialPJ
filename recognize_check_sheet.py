@@ -3,11 +3,9 @@ import cv2
 import csv
 import re
 
-from cv2 import bitwise_not
 import Contours
 from enum import Enum
 import numpy as np
-import tensorflow as tf
 import keras
 
 import utilitiesProcessImage
@@ -372,7 +370,7 @@ class CheckSheetReader():
 		
 		# ocrImg = binImg
 
-		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2)
+		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2,maxHeightThreshold=0.8)
 		padding = int(box_info[3]*0.5)
 
 		ocrImg = oriBinImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - 3*padding, 0):min(box_info[0]+box_info[2] + 3*padding, outputImg.shape[1])]
@@ -386,9 +384,9 @@ class CheckSheetReader():
 		h,w = ocrImg.shape
 		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
 		outputText = outputText.replace(' ', '')
-		m = re.search('[0-9]{9}', outputText)
-		if m:
-				outputText = m.group(0)
+		# m = re.search('[0-9]{9}', outputText)
+		# if m:
+		# 		outputText = m.group(0)
 		return errCode, outputImg, outputText
 
 	def getString(self, image, box, mode):
