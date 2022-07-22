@@ -57,7 +57,7 @@ if __name__=="__main__":
 			print("Invalid parameters provided")
 		files = os.listdir(args.input)
 		for file in files:
-			if file.endswith(".jpeg"):
+			if file.endswith(".jpeg") or file.endswith(".jpg") or file.endswith(".JPEG"):
 				readImage(args.input + "/" + file)
 
 		#statistic
