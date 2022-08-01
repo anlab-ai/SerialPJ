@@ -16,7 +16,7 @@ import constant
 from common import ErrorCode
 from multi_digit_model import build_digit_model
 from multi_digit_model import num_to_label
-
+import TextRecognizer
 
 folder_save = "results"
 
@@ -82,6 +82,7 @@ class CheckSheetReader():
 		oRingMaterial = ''
 		errCode, imgPumpName, pumpName = self.readPumpName(image)
 		errCode, imgMFGNo, mfgNo = self.readMFGNo(image)
+		# errCode, imgMotorLotNo , motorLotNo = self.getMotorLotNoForm(image)
 		imgMotorLotNo , motorLotNo = self.model.getMotorLotNoForm(image)
 		side , electricType, index_contruction, index_maker = self.model.checkSelection(image)
 		imgPowerValue, powerValue = self.model.getPowerValue(image)
@@ -107,7 +108,7 @@ class CheckSheetReader():
 ,{gasketConfirmation},{vMaterial},{oRingMaterial}'.strip().replace('"', '')
 
 		#save to view output image (test)
-		# utilitiesProcessImage.startDebug = True
+		utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
 			# path_out =os.path.join(folder_save , f'{imgName}')
 			# cv2.imwrite(path_out, imgPumpName)
@@ -149,7 +150,26 @@ class CheckSheetReader():
 		# if (pattern.match(serial_number) and len(serial_number) != 7) or scores[index] < 0.3:
 		# 		serial_number = f'[{serial_number}]'
 		return img_serial , serial_number
-		
+
+	def getMotorLotNoForm(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_MOTOR_LOT_NO]
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("getMotorLotNoForm_outputImg", outputImg)
+		textRecognizer = TextRecognizer.TextRecognizer()
+		labels, sentence, positions = textRecognizer.detect_text_cv2_image(outputImg)
+		outputText = ""
+		if len(labels) > 0:
+			outputText = labels[0]
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'outputText = {outputText}')
+			# cv2.imshow("readPowerValue_pridict_image", binImg)
+			cv2.waitKey()
+		return errCode, outputImg, outputText
+
 
 	def readPowerValue(self, image):
 		errCode = ErrorCode.SUCCESS
@@ -312,7 +332,7 @@ class CheckSheetReader():
 		errCode = ErrorCode.SUCCESS
 		box = self.position_infos[constant.TAG_PUMP_NAME]
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
-		# utilitiesProcessImage.startDebug = True
+		utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_outputImg",outputImg)
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
@@ -337,6 +357,8 @@ class CheckSheetReader():
 			cv2.imshow("readPumpName_ocrImage",ocrImg)
 		h,w = ocrImg.shape
 		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
+		if utilitiesProcessImage.startDebug:
+			print(f'origin outputText = {outputText}')
 		outputText = outputText.replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-L','-1').replace(' ','')
 		listRegex = ['[A-Z]{2}-[0-9,A-Z]{4,5}-[0-9,A-Z]{2,3}'\
 			, '[A-Z]{2}-[0-9,A-Z]{6}-[0-9,A-Z]{2,3}'\
