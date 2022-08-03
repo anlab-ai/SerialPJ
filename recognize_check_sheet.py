@@ -7,6 +7,7 @@ import Contours
 from enum import Enum
 import numpy as np
 import keras
+from paddleocr import PaddleOCR
 
 import utilitiesProcessImage
 import DigitsDetection
@@ -110,8 +111,8 @@ class CheckSheetReader():
 		#save to view output image (test)
 		utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
-			# path_out =os.path.join(folder_save , f'{imgName}')
-			# cv2.imwrite(path_out, imgPumpName)
+			path_out =os.path.join(folder_save , f'{imgName}')
+			cv2.imwrite(path_out, imgPumpName)
 			# path_out =os.path.join(folder_save , f'{imgName}')
 			# cv2.imwrite(path_out, imgMFGNo)
 			# path_out =os.path.join(folder_save , f'{lotNo}_{imgName}')
@@ -332,7 +333,7 @@ class CheckSheetReader():
 		errCode = ErrorCode.SUCCESS
 		box = self.position_infos[constant.TAG_PUMP_NAME]
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
-		utilitiesProcessImage.startDebug = True
+		# utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_outputImg",outputImg)
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
@@ -340,26 +341,33 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_binImg",binImg)
 		oriBinImg = binImg.copy()
-		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 9)
+		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
 		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
 		
 		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2)
-		padding = int(box_info[3]*0.5)
+		padding = int(box_info[3]*0.1)
 
-		# ocrImg = binImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
-		# cv2.copyMakeBorder(outputImage, padding, padding, padding*3, padding*3, cv2.BORDER_CONSTANT, None, value = 0)
+		ocrImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		ocrImg = cv2.copyMakeBorder(ocrImg, padding*4, padding*4, padding*2, padding*2, cv2.BORDER_CONSTANT, None, value = 0)
 		
-		ocrImg = binImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - padding, 0):min(box_info[0]+box_info[2] + padding, outputImg.shape[1])]
+		# ocrImg = binImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - padding, 0):min(box_info[0]+box_info[2] + padding, outputImg.shape[1])]
 		
 		ocrImg = cv2.bitwise_not(ocrImg)
+		outputImg = ocrImg
 		# utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_ocrImage",ocrImg)
-		h,w = ocrImg.shape
-		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
-		if utilitiesProcessImage.startDebug:
-			print(f'origin outputText = {outputText}')
-		outputText = outputText.replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-L','-1').replace(' ','')
+
+		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
+		results = ocr.ocr(ocrImg, cls=False, det=False)
+		outputText = results[0][0]
+		outputText = outputText.replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-5S','-55').replace('-F5S','-F55').replace('-F4S','-F45').replace('-F325','-F32S').replace('-i','-1').replace('-f','-F').replace('LK-E','LK-F')
+
+		# # h,w = ocrImg.shape
+		# # errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
+		# # if utilitiesProcessImage.startDebug:
+		# # 	print(f'origin outputText = {outputText}')
+		# outputText = outputText.replace("?","7").replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-L','-1').replace(' ','')
 		listRegex = ['[A-Z]{2}-[0-9,A-Z]{4,5}-[0-9,A-Z]{2,3}'\
 			, '[A-Z]{2}-[0-9,A-Z]{6}-[0-9,A-Z]{2,3}'\
 			, '[A-Z]{2}-[0-9,A-Z]{6}']

@@ -32,7 +32,7 @@ def readResults(filePath):
 def readImage(filePath):
 	print("filePath = ", filePath)
 	image = cv2.imread(filePath)
-	image = cv2.resize(image,[int(image.shape[1] * constant.A4_FORM_HEIGHT / image.shape[0]),constant.A4_FORM_HEIGHT])
+	image = cv2.resize(image,(int(image.shape[1] * constant.A4_FORM_HEIGHT / image.shape[0]),constant.A4_FORM_HEIGHT))
 	errorCode, info = checkSheetReader.RecognizeForm(image, os.path.basename(filePath))
 	if errorCode == ErrorCode.SUCCESS:
 		with open(outputFile, 'a') as resultsFile:
@@ -82,7 +82,7 @@ if __name__=="__main__":
 								print(f'alert file : {file}')
 								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'MFGNo':
+							if expectedResults["File"][i] == 'PumpName':
 								print(f'file : {file}')
 								print(f'results[file][i] = {results[file][i]}')
 			else:
