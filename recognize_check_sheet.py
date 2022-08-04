@@ -37,8 +37,8 @@ class CheckSheetReader():
 		self.hwDigitsStyleJpModel = DigitsDetection.DigitDetection()
 		self.tessRecognizer = tess_recognizer.TessRecognizer()
 		self.readPositionCsvFile("./position_forms/lk.csv")
-		checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
-		gray = cv2.cvtColor(checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
+		self.checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
+		gray = cv2.cvtColor(self.checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
 		binaryImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
 		# morphKernel2 = cv2.getStructuringElement(cv2.MORPH_RECT,(2, 2))
 		# self.maskCheckMaterial = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
@@ -109,10 +109,10 @@ class CheckSheetReader():
 ,{gasketConfirmation},{vMaterial},{oRingMaterial}'.strip().replace('"', '')
 
 		#save to view output image (test)
-		utilitiesProcessImage.startDebug = True
+		# utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
-			path_out =os.path.join(folder_save , f'{imgName}')
-			cv2.imwrite(path_out, imgPumpName)
+			# path_out =os.path.join(folder_save , f'{imgName}')
+			# cv2.imwrite(path_out, imgPumpName)
 			# path_out =os.path.join(folder_save , f'{imgName}')
 			# cv2.imwrite(path_out, imgMFGNo)
 			# path_out =os.path.join(folder_save , f'{lotNo}_{imgName}')
@@ -257,9 +257,32 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 				print(f'box = {box}')
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
+
+		method = cv2.TM_SQDIFF_NORMED
+		large_image = outputImg
+		small_image = self.checkMaterialDefaultImg
+		result = cv2.matchTemplate(small_image, large_image, method)
+
+		# We want the minimum squared difference
+		mn,_,mnLoc,_ = cv2.minMaxLoc(result)
+
+		# Draw the rectangle:
+		# Extract the coordinates of our best match
+		MPx,MPy = mnLoc
+		# Step 2: Get the size of the template. This is the same size as the match.
+		trows,tcols = small_image.shape[:2]
+		if utilitiesProcessImage.startDebug:
+			# Step 3: Draw the rectangle on large_image
+			cv2.rectangle(large_image, (MPx,MPy),(MPx+tcols,MPy+trows),(0,0,255),2)
+			# Display the original image with the rectangle around the match.
+			cv2.imshow('output',large_image)
+			# The image is only displayed if we call this
+			cv2.waitKey(0)
+
+		outputImg = outputImg[MPy:MPy+trows,MPx:MPx+tcols]
 		errCode, binImg = utilitiesProcessImage.convertBinaryImage(outputImg)
-		errCode, y_line = utilitiesProcessImage.findBorderHorizontalLine(binImg, 0.6,isTopLine=True)
-		y_line = max(0, y_line)
+		# errCode, y_line = utilitiesProcessImage.findBorderHorizontalLine(binImg, 0.6,isTopLine=True)
+		# y_line = max(0, y_line)
 		# oriBinImage = binImg.copy()
 		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
 		# binImg = cv2.bitwise_and(binImg, binImg1)
@@ -268,12 +291,12 @@ class CheckSheetReader():
 		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
 		
 		h,w = self.maskCheckMaterial.shape
-		if utilitiesProcessImage.startDebug:
-			print(f'h,w = {h},{w}')
-			print(f'y_line = {y_line}')
-			cv2.waitKey()
-		binImg = binImg[y_line:y_line+h,:w]
-		outputImg = outputImg[y_line:y_line+h,0:w]
+		# if utilitiesProcessImage.startDebug:
+		# 	print(f'h,w = {h},{w}')
+		# 	print(f'y_line = {y_line}')
+		# 	cv2.waitKey()
+		# binImg = binImg[y_line:y_line+h,:w]
+		# outputImg = outputImg[y_line:y_line+h,0:w]
 		mask = cv2.bitwise_not(self.maskCheckMaterial)
 		if binImg.shape[0] < h or binImg.shape[1] < w:
 			mask = mask[:binImg.shape[0], :binImg.shape[1]]
