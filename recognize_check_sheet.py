@@ -277,7 +277,7 @@ class CheckSheetReader():
 			# Display the original image with the rectangle around the match.
 			cv2.imshow('output',large_image)
 			# The image is only displayed if we call this
-			cv2.waitKey(0)
+			# cv2.waitKey(0)
 
 		outputImg = outputImg[MPy:MPy+trows,MPx:MPx+tcols]
 		errCode, binImg = utilitiesProcessImage.convertBinaryImage(outputImg)
@@ -305,7 +305,7 @@ class CheckSheetReader():
 		binImg = cv2.bitwise_and(binImg,mask)
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("binImg", binImg)
-			cv2.waitKey()
+			# cv2.waitKey()
 	
 		selections = [-1] * 6
 		for i in range(6):
@@ -315,7 +315,7 @@ class CheckSheetReader():
 				numberOptions = 6
 			else:
 				numberOptions = 3
-			maxCountNonZero = 10
+			maxCountNonZero = 60
 			maxHeight = 0
 			for j in range(numberOptions):
 				optionImg = itemImg[:,int(j*itemImg.shape[1]/numberOptions):int((j+1)*itemImg.shape[1]/numberOptions)]
@@ -349,6 +349,7 @@ class CheckSheetReader():
 			utilitiesProcessImage.startDebug = False
 			print(f'selections = {selections}')
 			cv2.imshow("outputImg", outputImg)
+			cv2.waitKey()
 			
 		return errCode, binImg, selections
 
