@@ -118,7 +118,8 @@ def centroidscoor(coorXY1,coorXY2):
     x = ((coorXY1[0] + coorXY2[0])/2)
     y = ((coorXY1[1] + coorXY2[1])/2)
     return (int(x),int(y))
-def removeBadContours(image,listboxmax1,listboxmin1):
+def removeBadContours(image,listboxmax1,listboxmin1,params,num):
+    #Params[0] - Filer good bbox
     goodBBox = []
     multiChar = []
     listChar = []
@@ -136,6 +137,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
     listCountPharse = []
     temp = []
     countChar = 0
+    listCut = []
     #Delete smal contours
     for i in range(len(listboxmax1)):
         w = listboxmax1[i][0] - listboxmin1[i][0]
@@ -144,7 +146,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
             listBoxMaxFilterSmall.append((listboxmax1[i][0],listboxmax1[i][1]))
             listBoxMinFilterSmall.append((listboxmin1[i][0],listboxmin1[i][1]))
     avgAreaWidth, avgAreaHeight, avgArea = getAvg(listBoxMaxFilterSmall,listBoxMinFilterSmall)
-    # Filer char from serialNum
+    # Filer good bbox
     for i in range(len(listBoxMaxFilterSmall)):
         w = listBoxMaxFilterSmall[i][0] - listBoxMinFilterSmall[i][0]
         h = listBoxMaxFilterSmall[i][1] - listBoxMinFilterSmall[i][1]
@@ -152,10 +154,10 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         if h > 0.55*avgAreaHeight and h * w >  0.4*avgArea : 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 1
-        elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.095*avgArea: 
+        elif h > 0.6*avgAreaHeight and h > 1.5*w and w*h > 0.08*avgArea: 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         #Number 0 small
-        elif w-h<3 and w*h > 0.15*avgArea: 
+        elif abs(w-h)<params[0][0] and w*h > params[0][1]*avgArea : 
             goodBBox.append([listBoxMinFilterSmall[i],listBoxMaxFilterSmall[i]])
         
     # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,goodBBox))
@@ -179,7 +181,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
     #         listCharFilterByCentroid.append(listChar[i])
     #         listMaxY.append(listChar[i][1][1])
     # avgMaxy = np.average(listMaxY)
-    listCharFilterByAvgMaxy = []
+    # listCharFilterByAvgMaxy = []
     # # Filter by avg coor(y)
     # for i in range(len(listCharFilterByCentroid)):
     #     if  listCharFilterByCentroid[i][1][1] + 12 > avgMaxy:
@@ -209,8 +211,9 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         if abs(centroidtemp[1]-avgMedian) < 16:
             listCharFilterByMdeian.append(listChar[i])
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByMdeian)
-    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listChar))
-
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByMdeian))
+    listChar = []
+    cooryMax = []
     # Filter by distance 
     for i in range(len(listCharFilterByMdeian)-1):
         w = listCharFilterByMdeian[i][1][0] - listCharFilterByMdeian[i][0][0]
@@ -237,90 +240,121 @@ def removeBadContours(image,listboxmax1,listboxmin1):
     if len(listCharFilterByDistance)!=0:
         listCharFilterByDistance = listCharFilterByDistance[0]
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByDistance)
-    #Filter char for calculate avg
-    listCharPre = []
-    for i in range(len(listCharFilterByDistance)):
-        w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
-        h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
-        #Check multiChar
-        if w >1.2*h and h * w > 1.3*avgArea  or w >1.47*h and w > 1.2*avgAreaWidth:
-            multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
-            # Two char in one box
-            if w > 0.5*avgAreaWidth and w < 2.5*avgAreaWidth: 
-                listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
-                listCharPre.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
-            # Three char in one box
-            elif w < 4*avgAreaWidth and w >= 2.5*avgAreaWidth:
-                listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
-                listCharPre.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
-                listCharPre.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
-        # One char
-        else:
-            listCharPre.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
-    avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharPre)
-    # Split multichar 
-    listChar = []
-    cooryMax = []
-    for i in range(len(listCharFilterByDistance)):
-        w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
-        h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
-        #Check multiChar
-        if w >1.2*h and h * w > 1.8*avgArea and w > 1.7*avgAreaWidth or w >1.47*h and w > 1.2*avgAreaWidth:
-            multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
-            imgcp = image.copy()
-            imgcp = imgcp[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
-            # Two char in one box
-            if w > 0.5*avgAreaWidth and w < 2.8*avgAreaWidth: 
-                imgcp2 = image[multiChar[0][1]:multiChar[1][1],multiChar[0][0]+int(w/2):multiChar[1][0]]
-                contourss,hierachy=cv2.findContours(imgcp2,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
-                
-                #Area by pixels
-                # bigArea = 0
-                # for row in range(imgcp2.shape[0]):
-                #     for col in range(imgcp2.shape[1]):
-                #         if imgcp2[row][col] > 240:
-                #             bigArea+=1
-                #Area by contours
-                # idMax = 0 
-                # for idcontourss in range(len(contourss)):
-                #     if len(contourss[idcontourss]) > len(contourss[idMax]):
-                #         idMax = idcontourss
-                # area = cv2.contourArea(contourss[idMax])
-                # bigArea = 0
-                # for idcontourss in range(len(contourss)):
-                #     bigArea += cv2.contourArea(contourss[idcontourss])
-                #Area by bbox
-                bboxmax,bboxmin = getBoundingBox(contourss)
-                bbox = []
-                for k in range(len(bboxmax)):
-                    bbox.append([bboxmin[k],bboxmax[k]])
-                    bigArea = 0
-                for l in bbox:
-                    w1 = l[1][0] - l[0][0]
-                    h1 = l[1][1] - l[0][1]
-                    if w1*h1 > bigArea:
-                        bigArea = w1*h1
-                if bigArea*2 > (w/2)*h:
-                # if bigArea > 0.2*(w/2)*h:
-                    listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
-                    listChar.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByDistance))
+    if num == -1:
+        #Filter char for calculate avg
+        listCharPre = []
+        for i in range(len(listCharFilterByDistance)):
+            w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
+            h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
+            #Check multiChar
+            if w >1.2*h and h * w > 1.3*avgArea  or w >1.47*h and w > 1.2*avgAreaWidth:
+                multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
+                # Two char in one box
+                if w > 0.5*avgAreaWidth and w < 2.5*avgAreaWidth: 
+                    listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
+                    listCharPre.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+                # Three char in one box
+                elif w < 4*avgAreaWidth and w >= 2.5*avgAreaWidth:
+                    listCharPre.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
+                    listCharPre.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
+                    listCharPre.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+            # One char
+            else:
+                listCharPre.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
+        avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharPre)
+        # Split multichar 
+        listChar = []
+        cooryMax = []
+        for i in range(len(listCharFilterByDistance)):
+            w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0] 
+            h = listCharFilterByDistance[i][1][1] - listCharFilterByDistance[i][0][1]
+            #Check multiChar
+            if w >1.2*h and h * w > 1.8*avgArea and w > 1.7*avgAreaWidth or w >1.47*h and w > 1.2*avgAreaWidth:
+                multiChar = [listCharFilterByDistance[i][0],listCharFilterByDistance[i][1]]
+                imgcp = image.copy()
+                imgcp = imgcp[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
+                # Two char in one box
+                if w > 0.5*avgAreaWidth and w < 2.8*avgAreaWidth: 
+                    imgcp2 = image[multiChar[0][1]:multiChar[1][1],multiChar[0][0]+int(w/2):multiChar[1][0]]
+                    contourss,hierachy=cv2.findContours(imgcp2,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+                    
+                    #Area by pixels
+                    # bigArea = 0
+                    # for row in range(imgcp2.shape[0]):
+                    #     for col in range(imgcp2.shape[1]):
+                    #         if imgcp2[row][col] > 240:
+                    #             bigArea+=1
+                    #Area by contours
+                    # idMax = 0 
+                    # for idcontourss in range(len(contourss)):
+                    #     if len(contourss[idcontourss]) > len(contourss[idMax]):
+                    #         idMax = idcontourss
+                    # area = cv2.contourArea(contourss[idMax])
+                    # bigArea = 0
+                    # for idcontourss in range(len(contourss)):
+                    #     bigArea += cv2.contourArea(contourss[idcontourss])
+                    #Area by bbox
+                    bboxmax,bboxmin = getBoundingBox(contourss)
+                    bbox = []
+                    for k in range(len(bboxmax)):
+                        bbox.append([bboxmin[k],bboxmax[k]])
+                        bigArea = 0
+                    for l in bbox:
+                        w1 = l[1][0] - l[0][0]
+                        h1 = l[1][1] - l[0][1]
+                        if w1*h1 > bigArea:
+                            bigArea = w1*h1
+                    if bigArea*2 > (w/2)*h:
+                    # if bigArea > 0.2*(w/2)*h:
+                        listCut.append(len(listChar))
+                        listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
+                        listChar.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+                        cooryMax.append(multiChar[1][1])
+                        cooryMax.append(multiChar[1][1])
+                    else:
+                        listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+                        cooryMax.append(multiChar[1][1])
+                # Three char in one box
+                elif w < 5*avgAreaWidth and w >= 2.8*avgAreaWidth:
+                    listCut.append(len(listChar))
+                    listCut.append(len(listChar)+1)
+                    listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
+                    listChar.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
+                    listChar.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                     cooryMax.append(multiChar[1][1])
                     cooryMax.append(multiChar[1][1])
-                else:
-                    listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                     cooryMax.append(multiChar[1][1])
-            # Three char in one box
-            elif w < 5*avgAreaWidth and w >= 2.8*avgAreaWidth:
-                listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/3)*2,multiChar[1][1])])
-                listChar.append([(multiChar[0][0]+int(w/3),multiChar[0][1]),(multiChar[1][0]-int(w/3),multiChar[1][1])])
-                listChar.append([(multiChar[1][0]-int(w/3),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+            # One char
+            else:
+                listChar.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
+                cooryMax.append(listCharFilterByDistance[i][1][1])
+    elif len(listCharFilterByDistance) != num:
+        posMax = 0
+        maxW = 0
+        for index in range(len(listCharFilterByDistance)):
+            w = listCharFilterByDistance[index][1][0] - listCharFilterByDistance[index][0][0] 
+            if w > maxW:
+                maxW = w
+                posMax = index
+        for index in range(len(listCharFilterByDistance)):
+            w = listCharFilterByDistance[index][1][0] - listCharFilterByDistance[index][0][0] 
+            h = listCharFilterByDistance[index][1][1] - listCharFilterByDistance[index][0][1]
+            multiChar = [listCharFilterByDistance[index][0],listCharFilterByDistance[index][1]]
+            if index == posMax:
+                listCut.append(len(listChar))
+                listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
+                listChar.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                 cooryMax.append(multiChar[1][1])
                 cooryMax.append(multiChar[1][1])
+            else:
+                listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                 cooryMax.append(multiChar[1][1])
-        # One char
-        else:
+    else:
+        for i in range(len(listCharFilterByDistance)):
             listChar.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
             cooryMax.append(listCharFilterByDistance[i][1][1])
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test1.jpg',drawBBox(image,listChar))
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listChar)
     # Filter char "No"
     avgCooryMax = np.average(cooryMax)
@@ -329,7 +363,7 @@ def removeBadContours(image,listboxmax1,listboxmin1):
         # if listChar[i][1][1] + 7 > avgCooryMax:
         if listChar[i][1][1] + avgAreaHeight*0.4 > avgCooryMax:
             rs.append(listChar[i])
-    return rs
+    return rs, listCut
 def resize_image_min( image,input_size=128):
 	height,width= image.shape[:2]
 	scale_1 = float(input_size/ width)
@@ -339,7 +373,7 @@ def resize_image_min( image,input_size=128):
 	height=int(height*scale)
 	image= cv2.resize(image,(width,height))
 	return image
-def splitCharFromSerialNo(image,Color):
+def splitCharFromForm(image,params =[[3,0.15]],num = -1,Color = [True, True]):
     image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     SerialNo = image.copy()
     SerialNo = convertColorToWhiteColor(SerialNo,Color = Color)
@@ -348,25 +382,18 @@ def splitCharFromSerialNo(image,Color):
     m, dev = cv2.meanStdDev(SerialGray)
     ret, thresh = cv2.threshold(SerialGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
     thresh = delLine(thresh)
-    # Padding
-    # thresh = padding(thresh)
-    # kernel = np.ones((1,2), np.uint8)
-    # kernel1 = np.ones((2,), np.uint8)
-    # thresh = cv2.erode(thresh, kernel, iterations=1)
-    # thresh = cv2.dilate(thresh, kernel, iterations=1)
-    # Finding countours
     contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
     # cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
     # plt.imshow(image)
     # plt.show()
     listboxmax,listboxmin = getBoundingBox(contours)
-    listChar = removeBadContours(thresh,listboxmax,listboxmin)
-    return listChar
-def splitCharFromForm(image,Color = [True, True]):
-    # image = resize_image_min(image,1280)
-    # SerialNo = image[box[1]:box[3],box[0]:box[2]]
-    listChar = splitCharFromSerialNo(image,Color)
-    return listChar
+    listChar, listCut = removeBadContours(thresh,listboxmax,listboxmin,params,num)
+    return thresh,listChar, listCut
+# def splitCharFromForm(image,Color = [True, True]):
+#     # image = resize_image_min(image,1280)
+#     # SerialNo = image[box[1]:box[3],box[0]:box[2]]
+#     imgBin, listChar = splitCharFromSerialNo(image,Color)
+#     return imgBin, listChar
 
 """---------------- InOut Area ---------------------"""
 def getBBoxFromInOut(image,SingleChar,listboxmax,listboxmin,areaRatio):

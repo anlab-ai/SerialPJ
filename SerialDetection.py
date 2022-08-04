@@ -256,7 +256,7 @@ class SerialDetection():
 		# print("bestclass" , bestclass, is_digit)
 		# exit()
 		return idx_cls, bestclass, bestconf
-
+	
 	def getFeature(self, image):
 		# image = self.pre_process(image)
 		blob = cv2.dnn.blobFromImage(image, 1/255.0, (105, 105))
@@ -365,6 +365,7 @@ class SerialDetection():
 		else:
 			listCharFilterColor = listb
 		return listCharFilterColor
+	
 	#Get input is image and return	MotorLotNo
 	def getMotorLotNoForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
@@ -372,27 +373,32 @@ class SerialDetection():
 		box_crop = [int(scale*457),int(scale*806),int(scale*1099),int(scale*900)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		# print("image shape", img.shape)
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
-		# img_serialcp = img_serial.copy()
+		img_serialcp = img_serial.copy()
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
 			ymin = max(0 , box[0][1] -est)
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_char)
+			# plt.show()
 			is_digit = False
 			if i != 2 and i != 3:
 				is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit )
 			serial_number += bestclass
 			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
-		return img_serial , serial_number
+		return img_serialcp , serial_number
 
 	#Get input is image and return power value
 	def getPowerValue(self, image):
@@ -400,7 +406,7 @@ class SerialDetection():
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1730),int(scale*1215),int(scale*1950),int(scale*1290)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -445,7 +451,9 @@ class SerialDetection():
 		box_crop = [int(scale*1875),int(scale*1367),int(scale*2389),int(scale*1445)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial,Color = [False, True])
+		# plt.imshow(img_serial)
+		# plt.show()
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial,Color = [False, True])
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -459,14 +467,17 @@ class SerialDetection():
 			m, dev = cv2.meanStdDev(im_char)
 			charGray = cv2.cvtColor(im_char, cv2.COLOR_BGR2GRAY)
 			ret, thresh = cv2.threshold(charGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+			# print(np.count_nonzero(thresh)/thresh.shape[0]*thresh.shape[1])
+			# print('NonZero',np.count_nonzero(thresh))
+			# print('area',0.1*thresh.shape[0]*thresh.shape[1])
 			if np.count_nonzero(thresh) < 0.12*thresh.shape[0]*thresh.shape[1]:
 				continue
 			is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit)
 			serial_number += bestclass
-			cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
-		
+		# print('seraial',serial_number)
 		for label in trueLabels:
 			serial_numberFlag = serial_number
 			while len(serial_numberFlag) != 1:
@@ -485,8 +496,10 @@ class SerialDetection():
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1450),int(scale*2389),int(scale*1523)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		# plt.imshow(img_serial)
+		# plt.show()
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		est = 2
 		serial_number = "" 
 		h, w = img_serial.shape[:2]
@@ -520,7 +533,7 @@ class SerialDetection():
 		box_crop = [int(scale*1885),int(scale*1541),int(scale*2389),int(scale*1625)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar, listCut = Contours.splitCharFromForm(img_serial,params=[[9,0.25]],num=4)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -529,20 +542,50 @@ class SerialDetection():
 			ymin = max(0 , box[0][1] -est)
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_serial)
+			# plt.show()
 			is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit)
 			serial_number += bestclass
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
 		return imgcp , serial_number
+	def get_backgroundColor(self,image):
+		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
+		m = cv2.mean(gray)
+		_, th = cv2.threshold(gray,m[0],255,cv2.THRESH_BINARY)
+		m = cv2.mean(image, th)
+		return 0.97*m[0], 0.97*m[1] ,0.97* m[2]
+	def removeNoise(self, im_char_bin,img_serial,x_min,y_min):
+		contours,hierachy=cv2.findContours(im_char_bin,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+		# contours = contours[0] if imutils.is_cv2() else contours[1]  
+		# cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+		r,g,b = self.get_backgroundColor(img_serial)
+		for contour in contours:
+			for value in contour:
+				value[0][0]+=x_min
+				value[0][1]+=y_min
+		cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x),reverse=True)
+		# plt.imshow(img_serial)
+		# plt.show()
+		# if len(contours)>1:
+		cv2.drawContours(img_serial, [cntsSorted[0]], -1, (r, g, b), -1)
+		# plt.imshow(img_serial)
+		# plt.show()
+		return img_serial
 	#Get input is image and return serial number
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
 		box_crop = [968,830, 1233, 887]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		img_serialcp = img_serial.copy()
 		# print("image shape", img.shape)
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
 		est = 2
@@ -553,22 +596,26 @@ class SerialDetection():
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_char)
+			# plt.show()
 			
 			is_digit = False
 			if i  > 0  :
 				is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit )
 			serial_number += bestclass
 		# for i, box in enumerate(listChar):
 		# 	xmin = box[0][0]
 		# 	ymin = box[0][1]
 		# 	xmax = box[1][0]
-		# 	ymax = box[1][1]
-			
-			# cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+		# 	ymax = box[1][1]	
+			cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 		
-		return img_serial , serial_number
+		return img_serialcp , serial_number
 
 	def checkSelection(self, image):
 		index_in_out = 0
