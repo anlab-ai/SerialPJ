@@ -231,7 +231,7 @@ class SerialDetection():
 		# print("bestclass" , bestclass, is_digit)
 		# exit()
 		return idx_cls, bestclass, bestconf
-
+	
 	def getFeature(self, image):
 		# image = self.pre_process(image)
 		blob = cv2.dnn.blobFromImage(image, 1/255.0, (105, 105))
@@ -340,6 +340,7 @@ class SerialDetection():
 		else:
 			listCharFilterColor = listb
 		return listCharFilterColor
+	
 	#Get input is image and return	MotorLotNo
 	def getMotorLotNoForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
@@ -347,27 +348,32 @@ class SerialDetection():
 		box_crop = [int(scale*457),int(scale*806),int(scale*1099),int(scale*900)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		# print("image shape", img.shape)
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
-		# img_serialcp = img_serial.copy()
+		img_serialcp = img_serial.copy()
 		for i, box in enumerate(listChar):
 			xmin = max(0 , box[0][0]-est)
 			ymin = max(0 , box[0][1] -est)
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_char)
+			# plt.show()
 			is_digit = False
 			if i != 2 and i != 3:
 				is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit )
 			serial_number += bestclass
 			# cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serialcp)
-		return img_serial , serial_number
+		return img_serialcp , serial_number
 
 	#Get input is image and return power value
 	def getPowerValue(self, image):
@@ -375,7 +381,7 @@ class SerialDetection():
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1730),int(scale*1215),int(scale*1950),int(scale*1290)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -420,7 +426,9 @@ class SerialDetection():
 		box_crop = [int(scale*1875),int(scale*1367),int(scale*2389),int(scale*1445)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial,Color = [False, True])
+		# plt.imshow(img_serial)
+		# plt.show()
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial,Color = [False, True])
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -434,14 +442,17 @@ class SerialDetection():
 			m, dev = cv2.meanStdDev(im_char)
 			charGray = cv2.cvtColor(im_char, cv2.COLOR_BGR2GRAY)
 			ret, thresh = cv2.threshold(charGray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+			# print(np.count_nonzero(thresh)/thresh.shape[0]*thresh.shape[1])
+			# print('NonZero',np.count_nonzero(thresh))
+			# print('area',0.1*thresh.shape[0]*thresh.shape[1])
 			if np.count_nonzero(thresh) < 0.12*thresh.shape[0]*thresh.shape[1]:
 				continue
 			is_digit = True
 			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit)
 			serial_number += bestclass
-			cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
-		
+		# print('seraial',serial_number)
 		for label in trueLabels:
 			serial_numberFlag = serial_number
 			while len(serial_numberFlag) != 1:
@@ -460,8 +471,10 @@ class SerialDetection():
 		scale = self.image_size/image.shape[1]
 		box_crop = [int(scale*1875),int(scale*1450),int(scale*2389),int(scale*1523)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		# plt.imshow(img_serial)
+		# plt.show()
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		est = 2
 		serial_number = "" 
 		h, w = img_serial.shape[:2]
@@ -492,10 +505,10 @@ class SerialDetection():
 	def getMinValue(self, image):	
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = self.image_size/image.shape[1]
-		box_crop = [int(scale*1885),int(scale*1541),int(scale*2389),int(scale*1625)]
+		box_crop = [int(scale*1885),int(scale*1538),int(scale*2389),int(scale*1625)]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
 		imgcp = img_serial.copy()
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar, listCut = Contours.splitCharFromForm(img_serial,params=[[9,0.25]],num=4)
 		serial_number = "" 
 		est = 2
 		h, w = img_serial.shape[:2]
@@ -504,20 +517,51 @@ class SerialDetection():
 			ymin = max(0 , box[0][1] -est)
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_serial)
+			# plt.show()
 			is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			img_char = cv2.GaussianBlur(img_char, (3,3), 3)
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit)
 			serial_number += bestclass
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
 		return imgcp , serial_number
+	def get_backgroundColor(self,image):
+		gray = cv2.cvtColor(image , cv2.COLOR_BGR2GRAY)
+		m = cv2.mean(gray)
+		_, th = cv2.threshold(gray,m[0],255,cv2.THRESH_BINARY)
+		m = cv2.mean(image, th)
+		return 0.97*m[0], 0.97*m[1] ,0.97* m[2]
+	def removeNoise(self, im_char_bin,img_serial,x_min,y_min):
+		contours,hierachy=cv2.findContours(im_char_bin,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+		# contours = contours[0] if imutils.is_cv2() else contours[1]  
+		# cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+		r,g,b = self.get_backgroundColor(img_serial)
+		for contour in contours:
+			for value in contour:
+				value[0][0]+=x_min
+				value[0][1]+=y_min
+		cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x),reverse=True)
+		# plt.imshow(img_serial)
+		# plt.show()
+		# if len(contours)>1:
+		cv2.drawContours(img_serial, [cntsSorted[0]], -1, (r, g, b), -1)
+		# plt.imshow(img_serial)
+		# plt.show()
+		return img_serial
 	#Get input is image and return serial number
 	def getSerialForm(self, image):
 		img = resize_image_min(image,input_size=self.image_size )
 		box_crop = [968,830, 1233, 887]
 		img_serial = img[box_crop[1]:box_crop[3],box_crop[0]:box_crop[2]]
+		img_serialcp = img_serial.copy()
 		# print("image shape", img.shape)
-		listChar = Contours.splitCharFromForm(img_serial)
+		imgBin,listChar,listCut = Contours.splitCharFromForm(img_serial)
 		# print("listChar" , len(listChar) , listChar)
 		serial_number = "" 
 		est = 2
@@ -530,21 +574,25 @@ class SerialDetection():
 			xmax = min(w , box[1][0] + est)
 			ymax = min(h , box[1][1] + est)
 			
-			im_char = img_serial[ymin:ymax, xmin:xmax]
+			img_char = img_serial[ymin:ymax, xmin:xmax].copy()
+			im_char_bin = imgBin[ymin:ymax, xmin:xmax]
+			if i not in listCut:
+				img_serial = self.removeNoise(im_char_bin,img_serial,xmin,ymin)
+			# plt.imshow(img_char)
+			# plt.show()
 			
 			is_digit = False
 			if i  > 0  :
 				is_digit = True
-			idx_cls, bestclass, bestconf = self.predict(im_char , is_digit )
+			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit )
 			serial_number += bestclass
 			score[i] = bestconf
 		# for i, box in enumerate(listChar):
 		# 	xmin = box[0][0]
 		# 	ymin = box[0][1]
 		# 	xmax = box[1][0]
-		# 	ymax = box[1][1]
-			
-			# cv2.rectangle(img_serial,(xmin, ymin),(xmax, ymax),(255,0,0),1)
+		# 	ymax = box[1][1]	
+			cv2.rectangle(img_serialcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 		
 		return img_serial , serial_number, score
 
@@ -614,73 +662,138 @@ class SerialDetection():
   		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
 		return index_in_out , index_electric, index_contruction, index_maker
 if __name__ == '__main__':
-	model = SerialDetection()
-	imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
-	# imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
-	folder_save = "results"
-	if not os.path.exists(folder_save):
-		os.mkdir(folder_save)
-	count_index_in_out = 0
-	count_index_electric = 0
-	count_index_contruction = 0
-	count_SerialNo = 0
-	count_maker = 0
- 
-	listCountInout = {}
-	listCountElectric = {}
-	listCountContruction = {}
-	listSerialNo = {}
-	listMaker = {}
-	with open('expected_result_70_images_update.csv') as csv_file:
-			csv_reader = csv_file.readlines()	
-	for i in range(1,len(csv_reader)):
-		data = csv_reader[i].split(',')
-		listCountInout[data[0]] = int(data[6])
-		listCountElectric[data[0]] = int(data[7])
-		listSerialNo[data[0]] = data[14].strip()
-		listCountContruction[data[0]] = int(data[5])
-		listMaker[data[0]] = int(data[4])
-	errors_data = {}
-	# charErr = []
+    model = SerialDetection()
+    imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001_1/LK_image_from_pdf")))
+    # imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+    folder_save = "results"
+    if not os.path.exists(folder_save):
+        os.mkdir(folder_save)
+    count_index_in_out = 0
+    count_index_electric = 0
+    count_index_contruction = 0
+    count_SerialNo = 0
+    count_maker = 0
+    count_PowerValue  = 0
+    count_MotorLotNo = 0
+    count_DynamicViscosity = 0
+    count_VValue = 0
+    count_HzValue  = 0
+    count_MinValue  = 0
+
+    listCountInout = {}
+    listCountElectric = {}
+    listCountContruction = {}
+    listSerialNo = {}
+    listMaker = {}
+    listPowerValue = {}
+    listMotorLotNo = {}
+    listDynamicViscosity = {}
+    listVValue = {}
+    listHzValue = {}
+    listMinValue = {}
+    with open('expected_result_70_images_update.csv') as csv_file:
+        csv_reader = csv_file.readlines()	
+    for i in range(1,len(csv_reader)):
+        data = csv_reader[i].split(',')
+        listCountInout[data[0]] = int(data[6])
+        listCountElectric[data[0]] = int(data[7])
+        listSerialNo[data[0]] = data[14].strip()
+        listCountContruction[data[0]] = int(data[5])
+        listMaker[data[0]] = int(data[4])
+        listMotorLotNo[data[0]] = data[3].strip()
+        listPowerValue[data[0]] = data[8].strip()
+        listDynamicViscosity[data[0]] = data[9].strip()
+        listVValue[data[0]] = data[11].strip()
+        listHzValue[data[0]] = data[12].strip()
+        listMinValue[data[0]] = data[13].strip()
+    errors_data = {}
+    charErr = []
 	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
-	for imagePath in imagePaths:
-		print("path " ,  imagePath)
-		# imagePath = "LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg"
-		basename = os.path.basename(imagePath)
-		image = cv2.imread(imagePath)
-		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
-		print(index_in_out , index_electric, index_contruction, index_maker)
-		if listCountInout[basename] != index_in_out:
-			print("basename errors " , basename)
-			count_index_in_out +=1
-			errors_data[basename] = 1
-		if listCountElectric[basename] != index_electric:
-			count_index_electric +=1
-			errors_data[basename] = 2
-		if listCountContruction[basename] != index_contruction:
-			count_index_contruction +=1
-			errors_data[basename] = 3
-		if listMaker[basename] != index_maker:
-			count_maker +=1
-			errors_data[basename] = 4
-		img_serial , serial_number= model.getSerialForm(image)
-		# with open("maker_detection.csv", 'a') as f:
-		# 	f.write(f'{basename},{index_maker}\n')
-		print("serial_number " , serial_number , listSerialNo[basename])
-		if listSerialNo[basename] != serial_number:
-			count_SerialNo += 1
-			errors_data[basename] = 5
-			# charErr.append(basename)
-			# charErr.append(listSerialNo[basename])
-			# charErr.append(serial_number)
-		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename])
-		print("=================================\n")
-		
-		# image = resize_image_min(image,input_size=1280 )
-		# cv2.rectangle(image,(box_info[0], box_info[1]),(box_info[2], box_info[3]),(255,0,0),1)
-		# cv2.rectangle(image,(box_info3[0], box_info3[1]),(box_info3[2], box_info3[3]),(255,0,0),2)
-		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{index_contruction}_{index_maker}_{basename}')
-		cv2.imwrite(path_out, image)
-		# exit()
-	print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo, errors_data)
-	# print(charErr)
+    for imagePath in imagePaths:
+        print("path " ,  imagePath)
+        # imagePath = "/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf/MFG No.042215649 LK-32VC-02_page0.jpeg"
+        basename = os.path.basename(imagePath)
+        image = cv2.imread(imagePath)
+        index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
+        # print(index_in_out , index_electric, index_contruction, index_maker)
+        if listCountInout[basename] != index_in_out:
+            # print("basename errors " , basename)
+            count_index_in_out +=1
+            errors_data[basename] = 1
+        if listCountElectric[basename] != index_electric:
+            count_index_electric +=1
+            errors_data[basename] = 2
+        if listCountContruction[basename] != index_contruction:
+            count_index_contruction +=1
+            errors_data[basename] = 3
+        if listMaker[basename] != index_maker:
+            count_maker +=1
+            errors_data[basename] = 4
+        #SerialNo
+        img_serial , serial_number= model.getSerialForm(image)
+        if listSerialNo[basename] != serial_number:
+            count_SerialNo += 1
+            errors_data[basename] = 5
+            path_out =os.path.join(folder_save , f'{serial_number}_{listSerialNo[basename]}_{basename}')
+            # print("serial_number " , serial_number , listSerialNo[basename])
+            # cv2.imwrite(path_out, img_serial)
+        #MotorLotNo
+        img_MotorLotNo , MotorLotNo_number= model.getMotorLotNoForm(image)
+        if listMotorLotNo[basename] != MotorLotNo_number:
+            count_MotorLotNo += 1
+            path_out =os.path.join(folder_save , f'{MotorLotNo_number}_{listMotorLotNo[basename]}_{basename}')
+            charErr.append([MotorLotNo_number,listMotorLotNo[basename],basename])
+            # print("MotorLotNo " , MotorLotNo_number , listMotorLotNo[basename])
+            # cv2.imwrite(path_out, img_MotorLotNo)
+        #PowerValue
+        img_PowerValue , PowerValue_number= model.getPowerValue(image)
+        if listPowerValue[basename] != PowerValue_number:
+            count_PowerValue += 1
+            path_out =os.path.join(folder_save , f'{PowerValue_number}_{listPowerValue[basename]}_{basename}')
+            # print("PowerValue " , PowerValue_number , listPowerValue[basename])
+            # cv2.imwrite(path_out, img_PowerValue)
+        #DynamicViscosity
+        img_DynamicViscosity , DynamicViscosity_number= model.getDynamicViscosity(image)
+        if listDynamicViscosity[basename] != DynamicViscosity_number:
+            count_DynamicViscosity += 1
+            path_out =os.path.join(folder_save , f'{DynamicViscosity_number}_{listDynamicViscosity[basename]}_{basename}')
+            # print("DynamicViscosity " , DynamicViscosity_number , listDynamicViscosity[basename])
+            # cv2.imwrite(path_out, img_DynamicViscosity)
+        #VValue
+        img_VValue , VValue_number= model.getVValue(image)
+        if listVValue[basename] != VValue_number:
+            count_VValue += 1
+            path_out =os.path.join(folder_save , f'{VValue_number}_{listVValue[basename]}_{basename}')
+            # print("VValue " , VValue_number , listVValue[basename])
+            # cv2.imwrite(path_out, img_VValue)
+        #HzValue
+        img_HzValue , HzValue_number= model.getHzValue(image)
+        if listHzValue[basename] != HzValue_number:
+            count_HzValue += 1
+            path_out =os.path.join(folder_save , f'{HzValue_number}_{listHzValue[basename]}_{basename}')
+            # print("HzValue " , HzValue_number , listHzValue[basename])
+            # cv2.imwrite(path_out, img_HzValue)
+        #MinValue
+        img_MinValue , MinValue_number= model.getMinValue(image)
+        if listMinValue[basename] != MinValue_number:
+            count_MinValue += 1
+            path_out =os.path.join(folder_save , f'{MinValue_number}_{listMinValue[basename]}_{basename}')
+                # print("MinValue " , MinValue_number , listMinValue[basename])
+            cv2.imwrite(path_out, img_MinValue)
+        print("=================================\n")
+        # exit()
+    print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo)
+    print('Error MotorLotNo:',count_MotorLotNo)
+    print('Error PowerValue:',count_PowerValue)
+    print('Error DynamicViscosity:',count_DynamicViscosity)
+    print('Error VValue:',count_VValue)
+    print('Error HzValue:',count_HzValue)
+    print('Error MinValue:',count_MinValue)
+	# for i in charErr:
+	# 	print(i[2])
+	# 	if len(i[0]) == len(i[1]):
+	# 		for j in range(len(i[0])):
+	# 			if i[0][j] != i[1][j]:
+	# 				print(i[0][j],i[1][j])
+	# 	else:
+	# 		print(i[0],i[1])

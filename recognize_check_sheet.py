@@ -92,6 +92,7 @@ class CheckSheetReader():
 		imgVValue , vValue = self.model.getVValue(image)
 		imgHzValue , hzValue = self.model.getHzValue(image)
 		imgMinValue , minValue = self.model.getMinValue(image)
+		# errCode,imgMinValue , minValue = self.readMinValue(image)
 		img_serial , serial_number = self.readSerialNo(image)
 		errCode, imgCheckMaterial, checkMaterialSelections = self.detectSelectionCheckMaterial(image)
 		flangePHeadMaterial = str(checkMaterialSelections[0])
@@ -212,6 +213,44 @@ class CheckSheetReader():
 			# cv2.imshow("readPowerValue_pridict_image", binImg)
 			cv2.waitKey()
 
+		return errCode, outputImg, outputText
+
+	def readMinValue(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_MIN_VALUE]
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readMinValue_outputImg", outputImg)
+		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
+		binImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readMinValue_binImg",binImg)
+		oriBinImg = binImg.copy()
+		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.9, 5)
+		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
+		
+		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2,ratioThreshold = 8)
+		padding = int(box_info[3]*0.1)
+
+		ocrImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		ocrImg = cv2.copyMakeBorder(ocrImg, padding*4, padding*4, padding*2, padding*2, cv2.BORDER_CONSTANT, None, value = 0)
+		
+		# ocrImg = binImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - padding, 0):min(box_info[0]+box_info[2] + padding, outputImg.shape[1])]
+		
+		ocrImg = cv2.bitwise_not(ocrImg)
+		outputImg = ocrImg
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readMinValue_ocrImage",ocrImg)
+
+		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
+		results = ocr.ocr(ocrImg, cls=False, det=False)
+		outputText = results[0][0]
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'outputText = {outputText}')
+			cv2.waitKey()
 		return errCode, outputImg, outputText
 
 
