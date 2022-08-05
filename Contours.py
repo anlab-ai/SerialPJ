@@ -135,7 +135,11 @@ def removeBadContours(image,listboxmax1,listboxmin1,params,num):
     listCharFilterByDistance = []
     listPhrase = []
     listCountPharse = []
+    listPhraseGroup = []
+    listCountPharseGroup = []
     temp = []
+    tempGroup = []
+    countCharGroup=0
     countChar = 0
     listCut = []
     #Delete smal contours
@@ -240,7 +244,34 @@ def removeBadContours(image,listboxmax1,listboxmin1,params,num):
     if len(listCharFilterByDistance)!=0:
         listCharFilterByDistance = listCharFilterByDistance[0]
     avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByDistance)
-    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByDistance))
+    # cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/test.jpg',drawBBox(image,listCharFilterByDistance))+
+    if len(listCharFilterByDistance) > num and num!=-1:
+        for i in range(len(listCharFilterByDistance)-1):
+            w = listCharFilterByDistance[i][1][0] - listCharFilterByDistance[i][0][0]
+            centroid = centroidscoor(listCharFilterByDistance[i][1],listCharFilterByDistance[i][0])
+            centroid1 = centroidscoor(listCharFilterByDistance[i+1][1],listCharFilterByDistance[i+1][0])
+            dist = math.sqrt((centroid[0] - centroid1[0])**2 + (centroid[1] - centroid[1])**2)
+            if dist < 2*avgAreaHeight:
+                tempGroup.append(listCharFilterByDistance[i])
+                countCharGroup +=1
+                if i + 2 == len(listCharFilterByDistance):
+                    tempGroup.append(listCharFilterByDistance[i+1])
+                    listPhraseGroup.append(tempGroup)
+                    countCharGroup +=1
+                    listCountPharseGroup.append(countCharGroup)
+            else:
+                tempGroup.append(listCharFilterByDistance[i])
+                listPhraseGroup.append(tempGroup)
+                countCharGroup +=1
+                listCountPharseGroup.append(countCharGroup)
+                countCharGroup = 0
+                tempGroup = []
+        listCharFilterByDistance = []
+        for i in range(len(listPhraseGroup)):
+            listCharFilterByDistance.append(listPhraseGroup[np.argmax(listCountPharseGroup)])
+        if len(listCharFilterByDistance)!=0:
+            listCharFilterByDistance = listCharFilterByDistance[0]
+        avgAreaWidth, avgAreaHeight, avgArea = getAvgFromList(listCharFilterByDistance)  
     if num == -1:
         #Filter char for calculate avg
         listCharPre = []
@@ -329,7 +360,7 @@ def removeBadContours(image,listboxmax1,listboxmin1,params,num):
             else:
                 listChar.append([(listCharFilterByDistance[i][0][0],listCharFilterByDistance[i][0][1]),(listCharFilterByDistance[i][1][0],listCharFilterByDistance[i][1][1])])
                 cooryMax.append(listCharFilterByDistance[i][1][1])
-    elif len(listCharFilterByDistance) != num:
+    elif len(listCharFilterByDistance) < num and num!=-1:
         posMax = 0
         maxW = 0
         for index in range(len(listCharFilterByDistance)):
@@ -342,9 +373,19 @@ def removeBadContours(image,listboxmax1,listboxmin1,params,num):
             h = listCharFilterByDistance[index][1][1] - listCharFilterByDistance[index][0][1]
             multiChar = [listCharFilterByDistance[index][0],listCharFilterByDistance[index][1]]
             if index == posMax:
+                minColumns = []
+                kernel1 = np.ones((8,1), np.uint8)
+                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7 ,7))
+                kernel = np.array(kernel,dtype=np.uint8)
+                img_tmp = image[multiChar[0][1]:multiChar[1][1],multiChar[0][0]:multiChar[1][0]]
+                img_erosion = cv2.dilate(image, kernel, iterations=2)  
+                img_erosion = cv2.erode(img_erosion, kernel1, iterations=2)  
+                for column in range(int((multiChar[1][0]-multiChar[0][0])*0.25)+multiChar[0][0],multiChar[1][0]-int((multiChar[1][0]-multiChar[0][0])*0.15)):
+                    minColumns.append(sum(value for value in img_erosion[multiChar[0][1]:multiChar[1][1],column] if value == 255))
+                posCut = np.where(np.min(minColumns)==minColumns)[0][-1] + int((multiChar[1][0]-multiChar[0][0])*0.25) + multiChar[0][0]
                 listCut.append(len(listChar))
-                listChar.append([(multiChar[0][0],multiChar[0][1]),(multiChar[1][0]-int(w/2),multiChar[1][1])])
-                listChar.append([(multiChar[0][0]+int(w/2),multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
+                listChar.append([(multiChar[0][0],multiChar[0][1]),(posCut,multiChar[1][1])])
+                listChar.append([(posCut,multiChar[0][1]),(multiChar[1][0],multiChar[1][1])])
                 cooryMax.append(multiChar[1][1])
                 cooryMax.append(multiChar[1][1])
             else:
