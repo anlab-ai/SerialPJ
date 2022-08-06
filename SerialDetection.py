@@ -526,8 +526,14 @@ class SerialDetection():
 			# plt.show()
 			is_digit = True
 			img_char = cv2.GaussianBlur(img_char, (3,3), 3)
+
 			idx_cls, bestclass, bestconf = self.predict(img_char , is_digit)
+			if i == len(listChar) - 1:
+				bestclass = "0"
 			serial_number += bestclass
+			# cv2.imshow("img_char", img_char)
+			# print(f"bestclass = {bestclass}")
+			# cv2.waitKey()
 			# cv2.rectangle(imgcp,(xmin, ymin),(xmax, ymax),(255,0,0),1)
 			# cv2.imwrite('/home/anlab/ANLAB/SerialPJ/projects/SerialPJ/results/'+basename,img_serial)
 		return imgcp , serial_number
