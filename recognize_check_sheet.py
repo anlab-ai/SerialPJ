@@ -133,7 +133,7 @@ class CheckSheetReader():
 			# path_out =os.path.join(folder_save , f'{serial_number}_{imgName}')
 			# cv2.imwrite(path_out, img_serial)
 			print(f'infoStr: {infoStr}')
-			# cv2.waitKey(0)
+			cv2.waitKey(0)
 			utilitiesProcessImage.startDebug = False
 		return errCode, infoStr
 
@@ -458,28 +458,34 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug == True:
 			cv2.imshow("readMFGNo_binImg",binImg)
 		oriBinImg = binImg.copy()
-		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 7)
-		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
+		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
+		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 240)
 		
 		# ocrImg = binImg
 
 		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2,maxHeightThreshold=0.8)
-		padding = int(box_info[3]*0.5)
 
-		ocrImg = oriBinImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - 3*padding, 0):min(box_info[0]+box_info[2] + 3*padding, outputImg.shape[1])]
+		padding = int(box_info[3]*0.1)
+
+		ocrImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		ocrImg = cv2.copyMakeBorder(ocrImg, padding*4, padding*4, padding*2, padding*2, cv2.BORDER_CONSTANT, None, value = 0)
 		
-		# ocrImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
-		# ocrImg = cv2.copyMakeBorder(ocrImg, padding, padding, padding, padding, cv2.BORDER_CONSTANT, None, value = 0)
-		
+		# ocrImg = oriBinImg[max(box_info[1] - padding,0):min(box_info[1]+box_info[3] + padding, outputImg.shape[0]), max(box_info[0] - 3*padding, 0):min(box_info[0]+box_info[2] + 3*padding, outputImg.shape[1])]
+	
 		ocrImg = cv2.bitwise_not(ocrImg)
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readMFGNo_ocrImage",ocrImg)
-		h,w = ocrImg.shape
-		errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
-		outputText = outputText.replace(' ', '')
-		# m = re.search('[0-9]{9}', outputText)
-		# if m:
-		# 		outputText = m.group(0)
+		# h,w = ocrImg.shape
+		# errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
+		
+		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
+		results = ocr.ocr(ocrImg, cls=False, det=False)
+		outputText = results[0][0]
+		outputText = outputText.replace('o','0').replace('S','5').replace('U','0').replace('s','5')
+
+		m = re.search('[0-9]{9}', outputText)
+		if m:
+				outputText = m.group(0)
 		return errCode, outputImg, outputText
 
 	def getString(self, image, box, mode):
