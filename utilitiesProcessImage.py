@@ -527,8 +527,8 @@ def filterBackgroundByColor(image, grayImg, thresholds):
 			g = int(image[y,x,1])
 			r = int(image[y,x,2])
 			# print(f'b,g,r = {b},{g},{r}')
-			if ((abs(r - g) - (max(r, g)*0.2) > 0 and max(r, g)>thresholds//2) or (abs(r - b) - (max(r, b)*0.2) > 0 and max(r, g)>thresholds//2) or (abs(g - b) - (max(g, b)*0.2) > 0 and max(r, g)>thresholds//2))\
-or (r > thresholds and g > thresholds and b > thresholds):
+			if ((abs(r - g) - (max(r, g)*0.2) > 0 and g > r and g>thresholds//2) or (abs(r - b) - (max(r, b)*0.2) > 0 and b > r  and b>thresholds//2) or (abs(g - b) - (max(g, b)*0.2) > 0 and max(b, g)>thresholds//2 and (r < b or r < g)))\
+  or (r > thresholds and g > thresholds and b > thresholds):
 				grayImg[y,x] = 0
 
 	if startDebug:
@@ -575,18 +575,23 @@ def findMainArea(binaryImg, sizeKenel,  minHeightThreshold = 0.33, maxHeightThre
 		cv2.imshow("findMainArea_dst", dst)
 	contours, hierarchies = cv2.findContours(dst, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	hierarchies = hierarchies[0]
+	cnts = []
+	for i in range(len(contours)):
+		if hierarchies[i][3] == -1:
+			cnts.append(contours[i])
+	cntsSorted = sorted(cnts, key=lambda x: cv2.boundingRect(x)[0],reverse=False)
+	if startDebug:
+		print(f'cntsSorted = {cntsSorted}')
 	y_min, x_min = binaryImg.shape
 	y_max, x_max = 0, 0
-	for i in range(len(contours)):
-		
-		if hierarchies[i][3] != -1:
-			continue
-		box = cv2.boundingRect(contours[i])
+	for i in range(len(cntsSorted)):
+		box = cv2.boundingRect(cntsSorted[i])
 		if startDebug:
 			print(f'findMainArea_contour_box = {box}')
 		if box[3] < binaryImg.shape[0]*minHeightThreshold \
 			or box[3] > binaryImg.shape[0]*maxHeightThreshold  \
-			or box[3]/box[2] > ratioThreshold or box[2]/box[3] > ratioThreshold:
+			or box[3]/box[2] > ratioThreshold or box[2]/box[3] > ratioThreshold \
+			or (x_max > 0 and box[0] - x_max > 5*constant.CHAR_WIDTH):
 			continue
 		
 		if x_min > box[0]:

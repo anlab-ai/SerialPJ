@@ -400,9 +400,17 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_outputImg",outputImg)
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
+		#create mask of color pen
+		hsv = cv2.cvtColor(outputImg, cv2.COLOR_BGR2HSV)
+		lower_pink = np.array([145,40,0])
+		upper_pink = np.array([160,255,255])
+		pink_mask = cv2.bitwise_not(cv2.inRange(hsv, lower_pink, upper_pink))
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("readPumpName_mask_1",pink_mask)    
 		binImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_binImg",binImg)
+		binImg = cv2.bitwise_and(binImg, pink_mask)
 		oriBinImg = binImg.copy()
 		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
 		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
