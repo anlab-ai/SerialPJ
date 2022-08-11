@@ -402,20 +402,33 @@ class CheckSheetReader():
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
 		#create mask of color pen
 		hsv = cv2.cvtColor(outputImg, cv2.COLOR_BGR2HSV)
-		lower_pink = np.array([145,40,0])
-		upper_pink = np.array([160,255,255])
-		pink_mask = cv2.bitwise_not(cv2.inRange(hsv, lower_pink, upper_pink))
+		lower_pink = np.array([145,20,0])
+		upper_pink = np.array([170,255,255])
+		pink_mask = cv2.inRange(hsv, lower_pink, upper_pink)
+		if utilitiesProcessImage.startDebug:
+			cv2.imshow("pink_mask",pink_mask)
+		tmpImg = cv2.bitwise_and(gray,pink_mask)
+		if cv2.countNonZero(pink_mask) > 100:
+			m, dev = cv2.meanStdDev(gray, mask=pink_mask)
+			retval, pink_mask = cv2.threshold(tmpImg, int(m[0] - 0.7*dev[0]), 255, cv2.THRESH_BINARY)
+		pink_mask = cv2.bitwise_not(pink_mask)
+
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_mask_1",pink_mask)    
+			cv2.imshow("tmpImg",tmpImg)
+			# cv2.waitKey()
 		binImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
+		
+		binImg = cv2.bitwise_and(binImg, pink_mask)
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_binImg",binImg)
-		binImg = cv2.bitwise_and(binImg, pink_mask)
+			cv2.waitKey()
 		oriBinImg = binImg.copy()
 		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
 		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
 		
 		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2)
+		
 		padding = int(box_info[3]*0.1)
 
 		ocrImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
