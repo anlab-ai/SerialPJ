@@ -81,16 +81,16 @@ def getLines(img):
 			#print(Line(startx,starty,endx,endy).toArray())
 	return lines
 
-def findTable(arr, min_size = 10):
+def findTable(arr,w , h ,  min_size = 10):
 	table = defaultdict(list)
 	
 	for i,b in enumerate(arr):
-		if b[2] < b[3]/2 or b[2] < min_size or b[3] <min_size :
+		if b[2] < b[3]/2 or b[2] < min_size or b[3] <min_size or b[2]*b[3] > 0.8*w*h :
 			continue
 		table[str(b[1])].append(b)
 	#print(table)
 	table = [i[1] for i in table.items()]# if len(i[1]) > 1]
-	#print(([len(x) for x in table]))
+	print(([len(x) for x in table]))
 	num_cols = max([len(x) for x in table])
 	
 	#print("num_cols:",num_cols)
@@ -160,11 +160,12 @@ def getTable(src_img, y_start=0, min_w=20, min_h=20):
 	# for i,cell in enumerate(boundingBoxes):
 	# 	src_img = cv2.rectangle(src_img, (cell[0], cell[1]), (cell[0] + cell[2], cell[1] + cell[3]), (0,255,0), 2)
 	# cv2.imwrite("t2.jpg", src_img)
-	# print("contours " , boundingBoxes)
-	table = findTable([cv2.boundingRect(x) for x in contours])
+	h , w = mask_img.shape[:2]
+	table = findTable([cv2.boundingRect(x) for x in contours] ,w , h )
+	# print("contours " , boundingBoxes, table)
 	index_start = -1 
 	table_result = []
-	h , w = mask_img.shape[:2]
+	
 	for i,row in enumerate(table):
 		cell = row[0]
 		if cell[3]*cell[2] > 0.8 * w *h:
