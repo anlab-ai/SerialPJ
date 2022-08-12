@@ -43,6 +43,8 @@ class CheckSheetReader():
 		self.maksImages = {}
 		errCode, self.templateImages[constant.TAG_FLANGE_P_HEAD_MATERIAL], self.maksImages[constant.TAG_FLANGE_P_HEAD_MATERIAL]  = self.readTemplateImageAndMask("./template_check_material/check_material_template.jpg")
 		errCode, self.templateImages[constant.TAG_O_RING_MATERIAL], self.maksImages[constant.TAG_O_RING_MATERIAL]  = self.readTemplateImageAndMask("./template_check_material/ORingMaterial_template.jpg")
+		errCode, self.templateImages[constant.TAG_TEST_DEVICE_NO], self.maksImages[constant.TAG_TEST_DEVICE_NO]  = self.readTemplateImageAndMask("./template_check_material/TesteviceeNo_template.jpg")
+		errCode, self.templateImages[constant.TAG_TEST_RESULT], self.maksImages[constant.TAG_TEST_RESULT]  = self.readTemplateImageAndMask("./template_check_material/TestResult_template.jpg")
 		
 
 		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
@@ -110,13 +112,15 @@ class CheckSheetReader():
 		gasketConfirmation = str(checkMaterialSelections[3])
 		vMaterial = str(checkMaterialSelections[4])
 		errCode, imgCheckORingMaterial, oRingMaterial = self.detectSelectionOringMaterial(image)
-		
+		errCode, imgTestDeviceNo, testDeviceNo = self.detectSelectionTestDeviceNo(image)
+		errCode, imgTestDeviceNo, testResult = self.detectSelectionTestResult(image)
+
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
 ,{powerValue.strip().replace(",", "")},{dynamicViscosity.strip().replace(",", "")},{pumpValue.strip().replace(",", "")}\
 ,{vValue.strip().replace(",", "")},{hzValue.strip().replace(",", "")},{minValue.strip().replace(",", "")},{serial_number.strip().replace(",", "")}\
 ,{flangePHeadMaterial},{valveMaterial},{vGuideMaterial}\
-,{gasketConfirmation},{vMaterial},{oRingMaterial}'.strip().replace('"', '')
+,{gasketConfirmation},{vMaterial},{oRingMaterial},,,,,,,,,,,,,,{testDeviceNo},,,{testResult}'.strip().replace('"', '')
 
 		#save to view output image (test)
 		# utilitiesProcessImage.startDebug = True
@@ -576,3 +580,34 @@ class CheckSheetReader():
 			outputStr = ''
 		return errCode, outputImg , outputStr
 
+	def detectSelectionTestDeviceNo(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_TEST_DEVICE_NO]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+				print(f'box = {box}')
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		errCode, outputImg, selection = utilitiesProcessImage.detectSelection(outputImg, self.templateImages[constant.TAG_TEST_DEVICE_NO], self.maksImages[constant.TAG_TEST_DEVICE_NO], numberOptions=3)
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'selection = {selection}')
+			cv2.imshow("outputImg", outputImg)
+			cv2.waitKey()
+
+		return errCode, outputImg, selection
+
+	def detectSelectionTestResult(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_TEST_RESULT]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+				print(f'box = {box}')
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		errCode, outputImg, selection = utilitiesProcessImage.detectSelection(outputImg, self.templateImages[constant.TAG_TEST_RESULT], self.maksImages[constant.TAG_TEST_RESULT], numberOptions=3)
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'selection = {selection}')
+			cv2.imshow("outputImg", outputImg)
+			cv2.waitKey()
+
+		return errCode, outputImg, selection
