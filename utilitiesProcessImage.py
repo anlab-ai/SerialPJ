@@ -657,3 +657,60 @@ def preprocess(img, imgSize):
     #img out co shape (128,32)
     return img
 
+def detectSelection(outputImg, templateImg, maskImg, numberOptions = 6, direction = 0):
+		errCode = ErrorCode.SUCCESS
+		method = cv2.TM_SQDIFF_NORMED
+		large_image = outputImg
+		small_image = templateImg
+		result = cv2.matchTemplate(small_image, large_image, method)
+
+		# We want the minimum squared difference
+		mn,_,mnLoc,_ = cv2.minMaxLoc(result)
+		# Extract the coordinates of our best match
+		MPx,MPy = mnLoc
+		# Step 2: Get the size of the template. This is the same size as the match.
+		trows,tcols = small_image.shape[:2]
+		if startDebug:
+			# Step 3: Draw the rectangle on large_image
+			cv2.rectangle(large_image, (MPx,MPy),(MPx+tcols,MPy+trows),(0,0,255),2)
+			# Display the original image with the rectangle around the match.
+			cv2.imshow('output',large_image)
+			# The image is only displayed if we call this
+			# cv2.waitKey(0)
+
+		outputImg = outputImg[MPy:MPy+trows,MPx:MPx+tcols]
+		errCode, binImg = convertBinaryImage(outputImg)
+		errCode, binImg = removeHorizontalLineTable(binImg, 0.6, 5)
+		errCode, binImg = filterBackgroundByColor(outputImg, binImg, 200)
+		
+		h,w = maskImg.shape
+		mask = cv2.bitwise_not(maskImg)
+		if binImg.shape[0] < h or binImg.shape[1] < w:
+			mask = mask[:binImg.shape[0], :binImg.shape[1]]
+		if startDebug:
+			cv2.imshow("mask", mask)
+		itemImg = cv2.bitwise_and(binImg,mask)
+		if startDebug:
+			cv2.imshow("itemImg", itemImg)
+			# cv2.waitKey()
+	
+		selection = -1
+		maxCountNonZero = 60
+		maxHeight = 0
+		for j in range(numberOptions):
+			optionImg = itemImg[:,int(j*itemImg.shape[1]/numberOptions):int((j+1)*itemImg.shape[1]/numberOptions)]
+			if direction == 1:
+				optionImg = itemImg[int(j*itemImg.shape[0]/numberOptions):int((j+1)*itemImg.shape[0]/numberOptions), :]
+			err, optionImg = removeVerticalLineTable(optionImg, 0.6, 5)	
+			err,box = getContentArea(optionImg, 2)
+			if err == ErrorCode.SUCCESS:
+				if box[3] > constant.CHAR_HEIGHT and box[3] > maxHeight:
+					maxHeight = box[3]
+					selection = j
+				elif maxHeight == 0:
+					countNonZero = cv2.countNonZero(optionImg)
+					if countNonZero > maxCountNonZero:
+						maxCountNonZero = countNonZero
+						selection = j
+			
+		return errCode, binImg, selection

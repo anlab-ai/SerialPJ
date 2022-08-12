@@ -37,13 +37,17 @@ class CheckSheetReader():
 		self.hwDigitsStyleJpModel = DigitsDetection.DigitDetection()
 		self.tessRecognizer = tess_recognizer.TessRecognizer()
 		self.readPositionCsvFile("./position_forms/lk.csv")
-		self.checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
-		gray = cv2.cvtColor(self.checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
-		binaryImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
-		# morphKernel2 = cv2.getStructuringElement(cv2.MORPH_RECT,(2, 2))
-		# self.maskCheckMaterial = cv2.morphologyEx(binaryImg, cv2.MORPH_CLOSE, morphKernel2)
+		
 		kernel = np.ones((11,11), np.uint8)
-		self.maskCheckMaterial = cv2.dilate(binaryImg, kernel, iterations=1)
+		self.checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
+		gray_material = cv2.cvtColor(self.checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
+		binaryImg_material = cv2.adaptiveThreshold(gray_material, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
+		self.maskCheckMaterial = cv2.dilate(binaryImg_material, kernel, iterations=1)
+
+		self.checkORingMaterialDefaultImg = cv2.imread("./template_check_material/ORingMaterial_template.jpg")
+		gray_ORingMaterial = cv2.cvtColor(self.checkORingMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
+		binaryImg_ORingMaterial = cv2.adaptiveThreshold(gray_ORingMaterial, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
+		self.maskCheckORingMaterial = cv2.dilate(binaryImg_ORingMaterial, kernel, iterations=1)
 
 		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
 		self.multi_digit_model.load_weights('multi_digit_model/2021-11-26_3/digit_model_last_2021-11-26.h5')
@@ -94,13 +98,14 @@ class CheckSheetReader():
 		imgMinValue , minValue = self.model.getMinValue(image)
 		# errCode,imgMinValue , minValue = self.readMinValue(image)
 		img_serial , serial_number = self.readSerialNo(image)
+		errCode, imgCheckORingMaterial, oRingMaterial = self.detectSelectionOringMaterial(image)
 		errCode, imgCheckMaterial, checkMaterialSelections = self.detectSelectionCheckMaterial(image)
 		flangePHeadMaterial = str(checkMaterialSelections[0])
 		valveMaterial = str(checkMaterialSelections[1])
 		vGuideMaterial = str(checkMaterialSelections[2])
 		gasketConfirmation = str(checkMaterialSelections[3])
 		vMaterial = str(checkMaterialSelections[4])
-		oRingMaterial = str(checkMaterialSelections[5])
+		# oRingMaterial = str(checkMaterialSelections[5])
 		
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
@@ -171,7 +176,6 @@ class CheckSheetReader():
 			# cv2.imshow("readPowerValue_pridict_image", binImg)
 			cv2.waitKey()
 		return errCode, outputImg, outputText
-
 
 	def readPowerValue(self, image):
 		errCode = ErrorCode.SUCCESS
@@ -253,7 +257,6 @@ class CheckSheetReader():
 			cv2.waitKey()
 		return errCode, outputImg, outputText
 
-
 	def readPumpValue(self, image):
 		errCode = ErrorCode.SUCCESS
 		box = self.position_infos[constant.TAG_PUMP_VALUE]
@@ -288,6 +291,22 @@ class CheckSheetReader():
 			print(f"readPumpValue_outputText: {outputText}")
 			cv2.waitKey()
 		return errCode, outputImg, outputText
+
+	def detectSelectionOringMaterial(self, image):
+		errCode = ErrorCode.SUCCESS
+		box = self.position_infos[constant.TAG_O_RING_MATERIAL]
+		# utilitiesProcessImage.startDebug = True
+		if utilitiesProcessImage.startDebug:
+				print(f'box = {box}')
+		outputImg = image[box[1]:box[3],box[0]:box[2]]
+		errCode, outputImg, selection = utilitiesProcessImage.detectSelection(outputImg, self.checkORingMaterialDefaultImg, self.maskCheckORingMaterial, numberOptions=3)
+		if utilitiesProcessImage.startDebug:
+			utilitiesProcessImage.startDebug = False
+			print(f'selection = {selection}')
+			cv2.imshow("outputImg", outputImg)
+			cv2.waitKey()
+
+		return errCode, outputImg, selection
 
 	def detectSelectionCheckMaterial(self, image):
 		errCode = ErrorCode.SUCCESS
