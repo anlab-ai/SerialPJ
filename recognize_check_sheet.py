@@ -39,19 +39,24 @@ class CheckSheetReader():
 		self.readPositionCsvFile("./position_forms/lk.csv")
 		
 		kernel = np.ones((11,11), np.uint8)
-		self.checkMaterialDefaultImg = cv2.imread("./template_check_material/check_material_template.jpg")
-		gray_material = cv2.cvtColor(self.checkMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
-		binaryImg_material = cv2.adaptiveThreshold(gray_material, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
-		self.maskCheckMaterial = cv2.dilate(binaryImg_material, kernel, iterations=1)
-
-		self.checkORingMaterialDefaultImg = cv2.imread("./template_check_material/ORingMaterial_template.jpg")
-		gray_ORingMaterial = cv2.cvtColor(self.checkORingMaterialDefaultImg, cv2.COLOR_BGR2GRAY)
-		binaryImg_ORingMaterial = cv2.adaptiveThreshold(gray_ORingMaterial, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
-		self.maskCheckORingMaterial = cv2.dilate(binaryImg_ORingMaterial, kernel, iterations=1)
+		self.templateImages = {}
+		self.maksImages = {}
+		errCode, self.templateImages[constant.TAG_FLANGE_P_HEAD_MATERIAL], self.maksImages[constant.TAG_FLANGE_P_HEAD_MATERIAL]  = self.readTemplateImageAndMask("./template_check_material/check_material_template.jpg")
+		errCode, self.templateImages[constant.TAG_O_RING_MATERIAL], self.maksImages[constant.TAG_O_RING_MATERIAL]  = self.readTemplateImageAndMask("./template_check_material/ORingMaterial_template.jpg")
+		
 
 		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
 		self.multi_digit_model.load_weights('multi_digit_model/2021-11-26_3/digit_model_last_2021-11-26.h5')
 		
+	def readTemplateImageAndMask(self, pathImg):
+		errCode = ErrorCode.SUCCESS
+		kernel = np.ones((11,11), np.uint8)
+		templateImg = cv2.imread(pathImg)
+		gray = cv2.cvtColor(templateImg, cv2.COLOR_BGR2GRAY)
+		binaryImg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 21, 7)
+		mask = cv2.dilate(binaryImg, kernel, iterations=1)
+		return errCode, templateImg, mask
+
 	def readPositionCsvFile(self, filePath):
 		positionFile = open(filePath)
 		csvreader = csv.reader(positionFile)
@@ -98,14 +103,13 @@ class CheckSheetReader():
 		imgMinValue , minValue = self.model.getMinValue(image)
 		# errCode,imgMinValue , minValue = self.readMinValue(image)
 		img_serial , serial_number = self.readSerialNo(image)
-		errCode, imgCheckORingMaterial, oRingMaterial = self.detectSelectionOringMaterial(image)
 		errCode, imgCheckMaterial, checkMaterialSelections = self.detectSelectionCheckMaterial(image)
 		flangePHeadMaterial = str(checkMaterialSelections[0])
 		valveMaterial = str(checkMaterialSelections[1])
 		vGuideMaterial = str(checkMaterialSelections[2])
 		gasketConfirmation = str(checkMaterialSelections[3])
 		vMaterial = str(checkMaterialSelections[4])
-		# oRingMaterial = str(checkMaterialSelections[5])
+		errCode, imgCheckORingMaterial, oRingMaterial = self.detectSelectionOringMaterial(image)
 		
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
@@ -299,7 +303,7 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 				print(f'box = {box}')
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
-		errCode, outputImg, selection = utilitiesProcessImage.detectSelection(outputImg, self.checkORingMaterialDefaultImg, self.maskCheckORingMaterial, numberOptions=3)
+		errCode, outputImg, selection = utilitiesProcessImage.detectSelection(outputImg, self.templateImages[constant.TAG_O_RING_MATERIAL], self.maksImages[constant.TAG_O_RING_MATERIAL], numberOptions=3)
 		if utilitiesProcessImage.startDebug:
 			utilitiesProcessImage.startDebug = False
 			print(f'selection = {selection}')
@@ -318,7 +322,7 @@ class CheckSheetReader():
 
 		method = cv2.TM_SQDIFF_NORMED
 		large_image = outputImg
-		small_image = self.checkMaterialDefaultImg
+		small_image = self.templateImages[constant.TAG_FLANGE_P_HEAD_MATERIAL]
 		result = cv2.matchTemplate(small_image, large_image, method)
 
 		# We want the minimum squared difference
@@ -348,14 +352,14 @@ class CheckSheetReader():
 		# 	cv2.imshow("binImg_bitwise_and", binImg)
 		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
 		
-		h,w = self.maskCheckMaterial.shape
+		h,w = self.maksImages[constant.TAG_FLANGE_P_HEAD_MATERIAL].shape
 		# if utilitiesProcessImage.startDebug:
 		# 	print(f'h,w = {h},{w}')
 		# 	print(f'y_line = {y_line}')
 		# 	cv2.waitKey()
 		# binImg = binImg[y_line:y_line+h,:w]
 		# outputImg = outputImg[y_line:y_line+h,0:w]
-		mask = cv2.bitwise_not(self.maskCheckMaterial)
+		mask = cv2.bitwise_not(self.maksImages[constant.TAG_FLANGE_P_HEAD_MATERIAL])
 		if binImg.shape[0] < h or binImg.shape[1] < w:
 			mask = mask[:binImg.shape[0], :binImg.shape[1]]
 		if utilitiesProcessImage.startDebug:
