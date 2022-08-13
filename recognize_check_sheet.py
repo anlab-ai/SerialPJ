@@ -96,7 +96,7 @@ class CheckSheetReader():
 		testDeviceNo = ''
 		detectResultTestInfos = ['','']
 		testResult = ''
-		detectStepChecks = ['','','','','','','','','','','','','','','','','','','','']
+		detectStepChecksStr = ',,,,,,,,,,,,,,,,,,,'
 		errCode, imgPumpName, pumpName = self.readPumpName(image)
 		errCode, imgMFGNo, mfgNo = self.readMFGNo(image)
 		# errCode, imgMotorLotNo , motorLotNo = self.getMotorLotNoForm(image)
