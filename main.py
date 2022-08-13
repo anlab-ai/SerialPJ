@@ -82,13 +82,13 @@ if __name__=="__main__":
 						# 	or expectedResults["File"][i] == 'TestResult':
 						# 	if (expectedResults[file][i] != -1) == (results[file][i] != -1):
 						# 		correctResults[i] += 1
-						if expectedResults[file][i] == results[file][i] :
+						if expectedResults[file][i] in results[file][i] :
 							correctResults[i] += 1
 						elif len(results[file][i]) > 0 and results[file][i][0] == '[' and results[file][i][-1] == ']':
 								print(f'alert file : {file}')
 								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'TestDeviceNo':
+							if expectedResults["File"][i] == 'ORingMaterial':
 								print(f'file : {file}')
 								print(f'results[file][i] = {results[file][i]}')
 			else:
