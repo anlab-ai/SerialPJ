@@ -452,7 +452,7 @@ class CheckSheetReader():
 			cv2.waitKey()
 		oriBinImg = binImg.copy()
 		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
-		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)
+		errCode, binImg = utilitiesProcessImage.filterBackgroundByColorWithoutPink(outputImg, binImg, 200)
 		
 		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2)
 		

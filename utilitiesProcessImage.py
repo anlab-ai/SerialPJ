@@ -527,6 +527,25 @@ def filterBackgroundByColor(image, grayImg, thresholds):
 			g = int(image[y,x,1])
 			r = int(image[y,x,2])
 			# print(f'b,g,r = {b},{g},{r}')
+			if ((abs(r - g) - (max(r, g)*0.2) > 0 and max(r, g)>thresholds//2) or (abs(r - b) - (max(r, b)*0.2) > 0 and max(r, b)>thresholds//2) or (abs(g - b) - (max(g, b)*0.2) > 0 and max(b, g)>thresholds//2))\
+  or (r > thresholds and g > thresholds and b > thresholds):
+				grayImg[y,x] = 0
+
+	if startDebug:
+		cv2.imshow("filterBackgroundByColor_grayImg", grayImg)
+	return errCode, grayImg
+
+def filterBackgroundByColorWithoutPink(image, grayImg, thresholds):
+	errCode = ErrorCode.SUCCESS
+	if startDebug:
+		cv2.imshow("filterBackgroundByColor_grayImg", grayImg)
+	h,w = grayImg.shape
+	for y in range(h):
+		for x in range(w):
+			b = int(image[y,x,0])
+			g = int(image[y,x,1])
+			r = int(image[y,x,2])
+			# print(f'b,g,r = {b},{g},{r}')
 			if ((abs(r - g) - (max(r, g)*0.2) > 0 and g > r and g>thresholds//2) or (abs(r - b) - (max(r, b)*0.2) > 0 and b > r  and b>thresholds//2) or (abs(g - b) - (max(g, b)*0.2) > 0 and max(b, g)>thresholds//2 and (r < b or r < g)))\
   or (r > thresholds and g > thresholds and b > thresholds):
 				grayImg[y,x] = 0
