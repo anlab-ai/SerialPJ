@@ -28,6 +28,7 @@ import Contours
 from model_CRNN_3_channels import get_model
 from parameters import letters
 import imutils
+from table_detection import getTable, drawTable
 
 latin_hand_writting_style_jp_model = "./latin_hand_writting_style_jp_model/"
 model_compares_text_options = "./model_compares_text_options/"
@@ -667,139 +668,268 @@ class SerialDetection():
 		# box_info3 = [box_info3[0] + box_contruction[0], box_info3[1] + box_contruction[1] , box_info3[2] + box_contruction[0] , box_info3[3] + box_contruction[1]]
   		# box_info2 = [box_info2[0] + box_electric[0], box_info2[1] + box_electric[1] , box_info2[2] + box_electric[0] , box_info2[3] + box_electric[1]]
 		return index_in_out , index_electric, index_contruction, index_maker
-if __name__ == '__main__':
-    model = SerialDetection()
-    imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001_1/LK_image_from_pdf")))
-    # imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
-    folder_save = "results"
-    if not os.path.exists(folder_save):
-        os.mkdir(folder_save)
-    count_index_in_out = 0
-    count_index_electric = 0
-    count_index_contruction = 0
-    count_SerialNo = 0
-    count_maker = 0
-    count_PowerValue  = 0
-    count_MotorLotNo = 0
-    count_DynamicViscosity = 0
-    count_VValue = 0
-    count_HzValue  = 0
-    count_MinValue  = 0
 
-    listCountInout = {}
-    listCountElectric = {}
-    listCountContruction = {}
-    listSerialNo = {}
-    listMaker = {}
-    listPowerValue = {}
-    listMotorLotNo = {}
-    listDynamicViscosity = {}
-    listVValue = {}
-    listHzValue = {}
-    listMinValue = {}
-    with open('expected_result_70_images_update.csv') as csv_file:
-        csv_reader = csv_file.readlines()	
-    for i in range(1,len(csv_reader)):
-        data = csv_reader[i].split(',')
-        listCountInout[data[0]] = int(data[6])
-        listCountElectric[data[0]] = int(data[7])
-        listSerialNo[data[0]] = data[14].strip()
-        listCountContruction[data[0]] = int(data[5])
-        listMaker[data[0]] = int(data[4])
-        listMotorLotNo[data[0]] = data[3].strip()
-        listPowerValue[data[0]] = data[8].strip()
-        listDynamicViscosity[data[0]] = data[9].strip()
-        listVValue[data[0]] = data[11].strip()
-        listHzValue[data[0]] = data[12].strip()
-        listMinValue[data[0]] = data[13].strip()
-    errors_data = {}
-    charErr = []
+	def getSelection(self, image, threshold_box_min = 0.5, threshold_box_max = 0.8, thresh_count_line = 0.35):
+		h, w = image.shape[:2]
+		is_Selection = False
+		image_cv = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+		img_clean = Contours.convertColorToWhiteColor(image_cv)
+		gray = cv2.cvtColor(img_clean, cv2.COLOR_BGR2GRAY)
+		# Inverse 
+		m, dev = cv2.meanStdDev(gray)
+		ret, thresh = cv2.threshold(gray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+		thresh = Contours.delLine(thresh)
+		h_structure = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+	
+		thresh = cv2.dilate(thresh,h_structure,1)
+		contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+		# cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+		# plt.imshow(image)
+		# plt.show()
+		ratio_line = 1
+		ratio_box = 0
+		if len(contours) > 0 :
+			box_max = cv2.boundingRect(contours[0])
+			area_max = cv2.contourArea(contours[0])
+			for cnt in contours:
+				area = cv2.contourArea(cnt)
+				if area_max < area:
+					area_max = area
+					box_max = cv2.boundingRect(cnt)
+			img_line = thresh[box_max[1] :box_max[1] + box_max[3] ,box_max[0]  :box_max[0] + box_max[2]  ]
+			count_line = cv2.countNonZero(img_line)
+			count_line2 = cv2.countNonZero(thresh)
+			area_box_line = box_max[2]*box_max[3]
+			ratio_line = count_line/area_box_line
+			ratio_box = area_box_line/(w*h)
+			if count_line2 / (count_line +1 ) < 1.2:
+				
+				if ratio_box < threshold_box_min or ratio_line > thresh_count_line:
+					is_Selection = True
+					if ratio_box > threshold_box_max and ratio_line < 1.3*thresh_count_line:
+						is_Selection = False
+			else:
+				is_Selection = True
+		# 	print( "here ",  is_Selection , ratio_box ,ratio_line )
+		# cv2.imwrite("image_clean.jpg" , thresh )
+		# exit()
+		return is_Selection , contours , ratio_line, ratio_box
+
+	def getCheckTable(self , image):
+		ret = False
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = image.shape[0]/img.shape[0]
+		box = [733, 381 ,892, 1086 ]
+		img = img[box[1]:box[3], box[0]:box[2]]
+		table = getTable(img)
+		print("table " , len(table))
+		
+		est = 3
+		status_table = []
+		max_check = min(20,len(table)) 
+		table = table[0:max_check]
+		ctn = None
+		ratio_line_ct = 1
+		ratio_box_ct = 0
+		index = -1
+		for i, tb in enumerate(table):
+			# if i != 1 :
+			# 	continue
+			tb = tb[0]
+			img_select = img[tb[1] +est:tb[1] + tb[3] -2*est ,tb[0] +est :tb[0] + tb[2] -2 *est ]
+			is_Selection, ct , ratio_line, ratio_box = self.getSelection(img_select)
+			
+			if i >= 1 and is_Selection and len(ct) == 1:
+				if len(ctn) == 1:
+					(center1, (w1, h1), al1) = cv2.minAreaRect(ct[0])
+					(center2, (w2, h2), al2) = cv2.minAreaRect(ctn[0])
+					b1 = cv2.boundingRect(ct[0])
+					b2 = cv2.boundingRect(ctn[0])
+					distance_line = abs(b2[0] - b1[2] - b1[0])
+					# print("angle " , i, al1 , al2 ,distance_line ,distance_line )
+					if al1 > 25 and al1 <65 and al2 > 25 and al2 <65 and distance_line < 12:
+						is_Selection = False
+						status_table[len(status_table) -1 ] = False
+			
+			ctn = ct
+			ratio_line_ct = ratio_line
+			ratio_box_ct = ratio_box
+			status_table.append(is_Selection)
+		output = drawTable(img, table , status_table)
+		if max_check == 20:
+			ret = True
+		else:
+			status_table = []
+		return ret , status_table , output
+
+	def checkSign(self, image):
+		h, w = image.shape[:2]
+		numData = 0
+		image_cv = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+		img_clean = Contours.convertColorToWhiteColor(image_cv)
+		gray = cv2.cvtColor(img_clean, cv2.COLOR_BGR2GRAY)
+		# Inverse 
+		m, dev = cv2.meanStdDev(gray)
+		ret, thresh = cv2.threshold(gray, m[0][0] - 0.5*dev[0][0], 255, cv2.THRESH_BINARY_INV)
+		thresh = Contours.delLine(thresh)
+		h_structure = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+	
+		thresh = cv2.dilate(thresh,h_structure,1)
+		contours,hierachy=cv2.findContours(thresh,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+		# cv2.imwrite("t1.jpg" ,thresh )
+		# cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
+		# plt.imshow(image)
+		# plt.show()
+		ratio_line = 1
+		ratio_box = 0
+		if len(contours) > 0 :
+			for cnt in contours:
+				box_max = cv2.boundingRect(cnt)
+				area = box_max[2]*box_max[3]
+				if area < 30 :
+					continue
+				numData +=1
+		return numData
+ 
+	def getSignName(self , image, length_data=2 , leng_sign = 0):
+		
+		results = [False, False]
+		ret = False
+		img = resize_image_min(image,input_size=self.image_size )
+		scale = image.shape[0]/img.shape[0]
+		box = [451, 1260 ,1085, 1343 ]
+		img = img[box[1]:box[3], box[0]:box[2]]
+		# cv2.imwrite("t1.jpg" ,img )
+		table = getTable(img)
+		isDetectTable = False
+		box1 = None
+		box2 = None
+		if len(table) >= 2 :
+			isDetectTable = True
+			box1 = table[0][0]
+			box2 = table[1][0]
+		elif len(table) == 1:
+			if len(table[0]) >= 2:
+				isDetectTable = True
+				box1 = table[0][0]
+				box2 = table[0][1]
+		if isDetectTable:
+			est = 3
+			img_select = img[box1[1] +est:box1[1] + box1[3] -2*est ,box1[0] + box1[2] // 3+est :box1[0] + box1[2] -2 *est ]
+			numData = self.checkSign(img_select)
+			if numData > length_data:
+				results[0] = True
+			img_select = img[box2[1] +est:box2[1] + box2[3] -2*est ,box2[0] + box2[2] // 2 :box2[0] + box2[2] -2 *est ]
+			numData2 = self.checkSign(img_select)
+			if numData2 > leng_sign:
+				results[1] = True
+			print("numData " , numData , numData2)
+		print("table " , table ,results )
+		return results
+
+if __name__ == '__main__':
+
+	model = SerialDetection()
+	# imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
+	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+	folder_save = "results"
+	if not os.path.exists(folder_save):
+		os.mkdir(folder_save)
+	count_index_in_out = 0
+	count_index_electric = 0
+	count_index_contruction = 0
+	count_SerialNo = 0
+	count_maker = 0
+ 
+	listCountInout = {}
+	listCountElectric = {}
+	listCountContruction = {}
+	listSerialNo = {}
+	listMaker = {}
+	list_status = {}
+	with open('expected_result_70_images_update.csv') as csv_file:
+			csv_reader = csv_file.readlines()
+	with open('status_results.csv') as csv_file:
+		status_reader = csv_file.readlines()
+	for l in status_reader:
+		data = l.split(',')
+		li = []
+		
+		for i in range(1,len(data)):
+			
+			if data[i].strip() == "TRUE" :
+				li.append(True)
+			else:
+				li.append(False)
+		list_status[data[0]] = li
+	for i in range(1,len(csv_reader)):
+		data = csv_reader[i].split(',')
+		listCountInout[data[0]] = int(data[6])
+		listCountElectric[data[0]] = int(data[7])
+		listSerialNo[data[0]] = data[14].strip()
+		listCountContruction[data[0]] = int(data[5])
+		listMaker[data[0]] = int(data[4])
+	errors_data = {}
+	errors_count_stt = []
+	errors_count_stt2 = []
+	# charErr = []
 	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
-    for imagePath in imagePaths:
-        print("path " ,  imagePath)
-        # imagePath = "/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf/MFG No.042215649 LK-32VC-02_page0.jpeg"
-        basename = os.path.basename(imagePath)
-        image = cv2.imread(imagePath)
-        index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
-        # print(index_in_out , index_electric, index_contruction, index_maker)
-        if listCountInout[basename] != index_in_out:
-            # print("basename errors " , basename)
-            count_index_in_out +=1
-            errors_data[basename] = 1
-        if listCountElectric[basename] != index_electric:
-            count_index_electric +=1
-            errors_data[basename] = 2
-        if listCountContruction[basename] != index_contruction:
-            count_index_contruction +=1
-            errors_data[basename] = 3
-        if listMaker[basename] != index_maker:
-            count_maker +=1
-            errors_data[basename] = 4
-        #SerialNo
-        img_serial , serial_number= model.getSerialForm(image)
-        if listSerialNo[basename] != serial_number:
-            count_SerialNo += 1
-            errors_data[basename] = 5
-            path_out =os.path.join(folder_save , f'{serial_number}_{listSerialNo[basename]}_{basename}')
-            # print("serial_number " , serial_number , listSerialNo[basename])
-            # cv2.imwrite(path_out, img_serial)
-        #MotorLotNo
-        img_MotorLotNo , MotorLotNo_number= model.getMotorLotNoForm(image)
-        if listMotorLotNo[basename] != MotorLotNo_number:
-            count_MotorLotNo += 1
-            path_out =os.path.join(folder_save , f'{MotorLotNo_number}_{listMotorLotNo[basename]}_{basename}')
-            charErr.append([MotorLotNo_number,listMotorLotNo[basename],basename])
-            # print("MotorLotNo " , MotorLotNo_number , listMotorLotNo[basename])
-            # cv2.imwrite(path_out, img_MotorLotNo)
-        #PowerValue
-        img_PowerValue , PowerValue_number= model.getPowerValue(image)
-        if listPowerValue[basename] != PowerValue_number:
-            count_PowerValue += 1
-            path_out =os.path.join(folder_save , f'{PowerValue_number}_{listPowerValue[basename]}_{basename}')
-            # print("PowerValue " , PowerValue_number , listPowerValue[basename])
-            # cv2.imwrite(path_out, img_PowerValue)
-        #DynamicViscosity
-        img_DynamicViscosity , DynamicViscosity_number= model.getDynamicViscosity(image)
-        if listDynamicViscosity[basename] != DynamicViscosity_number:
-            count_DynamicViscosity += 1
-            path_out =os.path.join(folder_save , f'{DynamicViscosity_number}_{listDynamicViscosity[basename]}_{basename}')
-            # print("DynamicViscosity " , DynamicViscosity_number , listDynamicViscosity[basename])
-            # cv2.imwrite(path_out, img_DynamicViscosity)
-        #VValue
-        img_VValue , VValue_number= model.getVValue(image)
-        if listVValue[basename] != VValue_number:
-            count_VValue += 1
-            path_out =os.path.join(folder_save , f'{VValue_number}_{listVValue[basename]}_{basename}')
-            # print("VValue " , VValue_number , listVValue[basename])
-            # cv2.imwrite(path_out, img_VValue)
-        #HzValue
-        img_HzValue , HzValue_number= model.getHzValue(image)
-        if listHzValue[basename] != HzValue_number:
-            count_HzValue += 1
-            path_out =os.path.join(folder_save , f'{HzValue_number}_{listHzValue[basename]}_{basename}')
-            # print("HzValue " , HzValue_number , listHzValue[basename])
-            # cv2.imwrite(path_out, img_HzValue)
-        #MinValue
-        img_MinValue , MinValue_number= model.getMinValue(image)
-        if listMinValue[basename] != MinValue_number:
-            count_MinValue += 1
-            path_out =os.path.join(folder_save , f'{MinValue_number}_{listMinValue[basename]}_{basename}')
-                # print("MinValue " , MinValue_number , listMinValue[basename])
-            cv2.imwrite(path_out, img_MinValue)
-        print("=================================\n")
-        # exit()
-    print("errors " ,count_index_in_out , count_index_electric, count_index_contruction, count_maker , count_SerialNo)
-    print('Error MotorLotNo:',count_MotorLotNo)
-    print('Error PowerValue:',count_PowerValue)
-    print('Error DynamicViscosity:',count_DynamicViscosity)
-    print('Error VValue:',count_VValue)
-    print('Error HzValue:',count_HzValue)
-    print('Error MinValue:',count_MinValue)
-	# for i in charErr:
-	# 	print(i[2])
-	# 	if len(i[0]) == len(i[1]):
-	# 		for j in range(len(i[0])):
-	# 			if i[0][j] != i[1][j]:
-	# 				print(i[0][j],i[1][j])
-	# 	else:
-	# 		print(i[0],i[1])
+	for imagePath in imagePaths:
+		
+		# imagePath = "LK_image_from_pdf/LK-57TC-02_page0.jpeg"
+		print("path " ,  imagePath)
+		basename = os.path.basename(imagePath)
+		image = cv2.imread(imagePath)
+		index_in_out , index_electric, index_contruction, index_maker   = model.checkSelection(image)
+		print(index_in_out , index_electric, index_contruction, index_maker)
+		if listCountInout[basename] != index_in_out:
+			print("basename errors " , basename)
+			count_index_in_out +=1
+			errors_data[basename] = 1
+		if listCountElectric[basename] != index_electric:
+			count_index_electric +=1
+			errors_data[basename] = 2
+		if listCountContruction[basename] != index_contruction:
+			count_index_contruction +=1
+			errors_data[basename] = 3
+		if listMaker[basename] != index_maker:
+			count_maker +=1
+			errors_data[basename] = 4
+		img_serial , serial_number= model.getSerialForm(image)
+		# with open("maker_detection.csv", 'a') as f:
+		# 	f.write(f'{basename},{index_maker}\n')
+		print("serial_number " , serial_number , listSerialNo[basename])
+		if listSerialNo[basename] != serial_number:
+			count_SerialNo += 1
+			errors_data[basename] = 5
+			# charErr.append(basename)
+			# charErr.append(listSerialNo[basename])
+			# charErr.append(serial_number)
+		# print("info " , index_in_out, index_electric, serial_number, listSerialNo[basename]
+		result_sign = model.getSignName(image)
+		print("result_sign " , result_sign)
+		if not result_sign[0] or  not  result_sign[1]:
+			errors_count_stt.append(basename)
+		ret , status_table , im_table = model.getCheckTable(image)
+		str = {basename}
+		result_stt =  list_status[basename]
+		print("result_stt ", result_stt, status_table)
+		if ret:
+			for j , s in enumerate(status_table):
+				if s != result_stt[j]:
+					ret = False
+					print("index " , j , s , result_stt[j])
+				str = f'{str},{s}'
+		if not ret :
+			errors_count_stt2.append(basename)
+		print("status_table " , ret)
+		with open('status.csv', 'a') as f:
+			
+			f.write(f'{str}\n')
+		print("=================================\n")
+		path_out =os.path.join(folder_save , f'{serial_number}_{index_in_out}_{index_electric}_{index_contruction}_{index_maker}_{basename}')
+		cv2.imwrite(path_out, im_table)
+		# exit()
+
+	print("errors " ,errors_count_stt , errors_count_stt2)
+	# print(charErr)

@@ -92,6 +92,11 @@ class CheckSheetReader():
 		gasketConfirmation = ''
 		vMaterial = ''
 		oRingMaterial = ''
+
+		testDeviceNo = ''
+		detectResultTestInfos = ['','']
+		testResult = ''
+		detectStepChecks = ['','','','','','','','','','','','','','','','','','','','']
 		errCode, imgPumpName, pumpName = self.readPumpName(image)
 		errCode, imgMFGNo, mfgNo = self.readMFGNo(image)
 		# errCode, imgMotorLotNo , motorLotNo = self.getMotorLotNoForm(image)
@@ -113,14 +118,16 @@ class CheckSheetReader():
 		vMaterial = str(checkMaterialSelections[4])
 		errCode, imgCheckORingMaterial, oRingMaterial = self.detectSelectionOringMaterial(image)
 		errCode, imgTestDeviceNo, testDeviceNo = self.detectSelectionTestDeviceNo(image)
-		errCode, imgTestDeviceNo, testResult = self.detectSelectionTestResult(image)
-
+		errCode, imgTestResult, testResult = self.detectSelectionTestResult(image)
+		detectResultTestInfos = self.model.getSignName(image)
+		ret , detectStepChecks , im_table = self.model.getCheckTable(image)
+		detectStepChecksStr = f'{detectStepChecks}'.replace("[", "").replace("]", "")
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
 ,{powerValue.strip().replace(",", "")},{dynamicViscosity.strip().replace(",", "")},{pumpValue.strip().replace(",", "")}\
 ,{vValue.strip().replace(",", "")},{hzValue.strip().replace(",", "")},{minValue.strip().replace(",", "")},{serial_number.strip().replace(",", "")}\
 ,{flangePHeadMaterial},{valveMaterial},{vGuideMaterial}\
-,{gasketConfirmation},{vMaterial},{oRingMaterial},,,,,,,,,,,,,,{testDeviceNo},,,{testResult}'.strip().replace('"', '')
+,{gasketConfirmation},{vMaterial},{oRingMaterial},,,,,,,,,,,,,,{testDeviceNo},{detectResultTestInfos[0]},{detectResultTestInfos[1]},{testResult},{detectStepChecksStr}'.strip().replace('"', '')
 
 		#save to view output image (test)
 		# utilitiesProcessImage.startDebug = True
