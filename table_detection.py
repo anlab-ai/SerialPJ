@@ -26,7 +26,7 @@ class Line():
 	def toArray(self):
 		return [self.startx, self.starty, self.endx, self.endy]
 
-def reDrawLine(img, thshold = 0.5):
+def reDrawLine(img, threshold_size = 0.5):
 	w, h = img.shape[0], img.shape[1]
 	for r in range(w-1):
 		pixel_white = 0
@@ -40,11 +40,11 @@ def reDrawLine(img, thshold = 0.5):
 			if img[r, c] == 255 and img[r,c+1] == 0:
 				end = c
 		
-		if pixel_white > thshold*h:
-			# print("pixel_white ", pixel_white , thshold*h)
-			img[r,0:w] = 255
-		else:
-			img[r,0:w] = 0
+		if pixel_white > threshold_size*h:
+			# print("pixel_white ", r, 0 , w, pixel_white , threshold_size*h)
+			img[r,0:h] = 255
+		# else:
+		# 	img[r,0:h] = 0
 	return img
 
 def findMinMaxRow(v_img):
@@ -88,8 +88,11 @@ def findTable(arr,w , h ,  min_size = 10):
 		if b[2] < b[3]/2 or b[2] < min_size or b[3] <min_size or b[2]*b[3] > 0.8*w*h :
 			continue
 		table[str(b[1])].append(b)
-	#print(table)
+	
 	table = [i[1] for i in table.items()]# if len(i[1]) > 1]
+	data = [len(x) for x in table]
+	if len(data) <= 0 :
+		return table
 	print(([len(x) for x in table]))
 	num_cols = max([len(x) for x in table])
 	
@@ -99,7 +102,7 @@ def findTable(arr,w , h ,  min_size = 10):
 	#print("table cols=",num_cols)
 	return table
 
-def getTable(src_img, y_start=0, min_w=20, min_h=20):
+def getTable(src_img, y_start=0, min_w=20, min_h=20, threshold_size=0.5):
 	if y_start != 0:
 		src_img = src_img[y_start:,:]
 	if len(src_img.shape) == 2:
@@ -113,32 +116,33 @@ def getTable(src_img, y_start=0, min_w=20, min_h=20):
 	scale = 5
 
 	h_size = int(h_img.shape[1]/scale)
+	h_size = min(h_size , 51)
 	h_structure = cv2.getStructuringElement(cv2.MORPH_RECT,(h_size,1))
 	
 	h_erode_img = cv2.erode(h_img,h_structure,1)
 	h_dilate_img = cv2.dilate(h_erode_img,h_structure,1)
 	
 	v_size = int(v_img.shape[0] / scale)
+	v_size = min(v_size , 51)
+	
+	# print("h_size ", h_size , "v_size " , v_size)
 	v_structure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, v_size))
 	
 	v_erode_img = cv2.erode(v_img, v_structure, 1)
 	v_dilate_img = cv2.dilate(v_erode_img, v_structure, 1)
+	v_structure = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+	if v_size > 50 :
+		v_dilate_img = cv2.dilate(v_dilate_img, v_structure, 1)
+	if h_size > 50 :
+		h_dilate_img = cv2.dilate(h_dilate_img, v_structure, 1)
 	
 	
 	# aleft, aright = findMinMaxRow(v_dilate_img.T)
 	# aleft2, aright2 = findMinMaxRow(h_dilate_img)
-	h_dilate_img = reDrawLine(h_dilate_img)
-	
-	v_dilate_img = reDrawLine(v_dilate_img.T).T
-	
-	# cv2.imwrite('v_dilate_img.jpg',v_dilate_img)
-  
-	# v_dilate_img.T[aleft,aleft2:aright2] = 255
-	# v_dilate_img.T[aright,aleft2:aright2] = 255
-	
-	# edges = cv2.Canny(h_dilate_img,50,150,apertureSize = 3) 
-	# h, w = edges.shape[:2]
-	# #print(len(edges))
+	v_dilate_img = reDrawLine(v_dilate_img.T, threshold_size=threshold_size).T
+	# cv2.imwrite('t3.jpg',v_dilate_img)
+	h_dilate_img = reDrawLine(h_dilate_img, threshold_size = threshold_size)
+	# cv2.imwrite('t3.jpg',v_dilate_img)
 
 	mask_img = h_dilate_img + v_dilate_img
 	# joints_img = cv2.bitwise_and(h_dilate_img, v_dilate_img)
@@ -154,17 +158,21 @@ def getTable(src_img, y_start=0, min_w=20, min_h=20):
 	mask_img = cv2.dilate(mask_img, v_structure, 1)
 	mask_img = cv2.erode(mask_img, v_structure, 1)
 	contours, _ = cv2.findContours(mask_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	
+	# cv2.imwrite('t1.jpg',mask_img)
 	(contours, boundingBoxes) = cont.sort_contours(contours, method="left-to-right")
 	(contours, boundingBoxes) = cont.sort_contours(contours, method="top-to-bottom")
 	# for i,cell in enumerate(boundingBoxes):
 	# 	src_img = cv2.rectangle(src_img, (cell[0], cell[1]), (cell[0] + cell[2], cell[1] + cell[3]), (0,255,0), 2)
 	# cv2.imwrite("t2.jpg", src_img)
 	h , w = mask_img.shape[:2]
+	table_result = []
+	if len(boundingBoxes) <= 1 :
+		return table_result
+	# print("contours " , boundingBoxes, len(contours))
 	table = findTable([cv2.boundingRect(x) for x in contours] ,w , h )
 	# print("contours " , boundingBoxes, table)
 	index_start = -1 
-	table_result = []
+	
 	
 	for i,row in enumerate(table):
 		cell = row[0]

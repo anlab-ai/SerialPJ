@@ -28,7 +28,7 @@ import Contours
 from model_CRNN_3_channels import get_model
 from parameters import letters
 import imutils
-from table_detection import getTable, drawTable
+from table_detection import getTable, drawTable, drawTable2
 
 latin_hand_writting_style_jp_model = "./latin_hand_writting_style_jp_model/"
 model_compares_text_options = "./model_compares_text_options/"
@@ -719,10 +719,10 @@ class SerialDetection():
 		ret = False
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
-		box = [733, 381 ,892, 1086 ]
+		box = [733, 381 ,895, 1086 ]
 		img = img[box[1]:box[3], box[0]:box[2]]
 		table = getTable(img)
-		print("table " , len(table))
+		# print("table " , len(table))
 		
 		est = 3
 		status_table = []
@@ -756,6 +756,7 @@ class SerialDetection():
 			ratio_box_ct = ratio_box
 			status_table.append(is_Selection)
 		output = drawTable(img, table , status_table)
+		# cv2.imwrite("t1.jpg" ,output )
 		if max_check == 20:
 			ret = True
 		else:
@@ -797,10 +798,12 @@ class SerialDetection():
 		ret = False
 		img = resize_image_min(image,input_size=self.image_size )
 		scale = image.shape[0]/img.shape[0]
-		box = [451, 1260 ,1085, 1343 ]
+		box = [451, 1262 ,1095, 1343 ]
 		img = img[box[1]:box[3], box[0]:box[2]]
-		# cv2.imwrite("t1.jpg" ,img )
-		table = getTable(img)
+		
+		table = getTable(img, threshold_size=0.45)
+		output = drawTable2(img, table )
+		# cv2.imwrite("t1.jpg" ,output )
 		isDetectTable = False
 		box1 = None
 		box2 = None
@@ -817,6 +820,7 @@ class SerialDetection():
 			est = 3
 			img_select = img[box1[1] +est:box1[1] + box1[3] -2*est ,box1[0] + box1[2] // 3+est :box1[0] + box1[2] -2 *est ]
 			numData = self.checkSign(img_select)
+			
 			if numData > length_data:
 				results[0] = True
 			img_select = img[box2[1] +est:box2[1] + box2[3] -2*est ,box2[0] + box2[2] // 2 :box2[0] + box2[2] -2 *est ]
@@ -830,8 +834,8 @@ class SerialDetection():
 if __name__ == '__main__':
 
 	model = SerialDetection()
-	# imagePaths = sorted(list(paths.list_images("/home/anlab/Downloads/LK_image_from_pdf-20220620T085925Z-001/LK_image_from_pdf")))
-	imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
+	imagePaths = sorted(list(paths.list_images("jpg_files_LK-20220815T025511Z-001")))
+	# imagePaths = sorted(list(paths.list_images("LK_image_from_pdf")))
 	folder_save = "results"
 	if not os.path.exists(folder_save):
 		os.mkdir(folder_save)
@@ -861,7 +865,17 @@ if __name__ == '__main__':
 				li.append(True)
 			else:
 				li.append(False)
+		
 		list_status[data[0]] = li
+	# 	key_mfg = data[0].split(" ")[0]
+	# 	print("key_mfg " , key_mfg)
+	# 	if key_mfg == "MFG":
+	# 		l_out = l.replace("_page0.jpeg",".jpg")
+	# 		with open('update_stt.csv', 'a') as f:
+	# 			f.write(f'{l_out}')
+
+	# exit()
+	# print("imagePaths " , imagePaths)
 	for i in range(1,len(csv_reader)):
 		data = csv_reader[i].split(',')
 		listCountInout[data[0]] = int(data[6])
@@ -875,8 +889,8 @@ if __name__ == '__main__':
 	# charErr = []
 	# imagePaths = ['LK_image_from_pdf/LK-11S6-02_page0.jpeg', 'LK_image_from_pdf/LK-22VC-02_page0.jpeg', 'LK_image_from_pdf/LK-32VHU-02_page0.jpeg', 'LK_image_from_pdf/LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/LK-F32TCT EUR_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F (2)_page0.jpeg', 'LK_image_from_pdf/LK-F47S6-04F_page0.jpeg', 'LK_image_from_pdf/MFG No.032200723 LK-11VC-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209239 LK-21VSU-02_page0.jpeg', 'LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032211488 LK-F45TCT EUR_page0.jpeg', 'LK_image_from_pdf/MFG No.032212693 LK-21VHU-02_page0.jpeg']
 	for imagePath in imagePaths:
-		
-		# imagePath = "LK_image_from_pdf/LK-57TC-02_page0.jpeg"
+		# imagePath = "LK_image_from_pdf/MFG No.032209259 LK-F32S6T EUR_page0.jpeg"
+		# imagePath = "jpg_files_LK-20220815T025511Z-001/jpg_files_LK/MFG No.042214837 LK-F45S6T-E02.jpg"
 		print("path " ,  imagePath)
 		basename = os.path.basename(imagePath)
 		image = cv2.imread(imagePath)
@@ -912,7 +926,8 @@ if __name__ == '__main__':
 			errors_count_stt.append(basename)
 		ret , status_table , im_table = model.getCheckTable(image)
 		str = {basename}
-		result_stt =  list_status[basename]
+		# result_stt = []
+		result_stt =  list_status[basename.strip()]
 		print("result_stt ", result_stt, status_table)
 		if ret:
 			for j , s in enumerate(status_table):
