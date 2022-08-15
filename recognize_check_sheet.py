@@ -122,7 +122,7 @@ class CheckSheetReader():
 		errCode, imgTestResult, testResult = self.detectSelectionTestResult(image)
 		detectResultTestInfos = self.model.getSignName(image)
 		ret , detectStepChecks , im_table = self.model.getCheckTable(image)
-		# detectStepChecksStr = f'{detectStepChecks}'.replace("[", "").replace("]", "")
+		detectStepChecksStr = f'{detectStepChecks}'.replace("[", "").replace("]", "")
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
 ,{powerValue.strip().replace(",", "")},{dynamicViscosity.strip().replace(",", "")},{pumpValue.strip().replace(",", "")}\
