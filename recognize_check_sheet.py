@@ -46,7 +46,7 @@ class CheckSheetReader():
 		errCode, self.templateImages[constant.TAG_TEST_DEVICE_NO], self.maksImages[constant.TAG_TEST_DEVICE_NO]  = self.readTemplateImageAndMask("./template_check_material/TesteviceeNo_template.jpg")
 		errCode, self.templateImages[constant.TAG_TEST_RESULT], self.maksImages[constant.TAG_TEST_RESULT]  = self.readTemplateImageAndMask("./template_check_material/TestResult_template.jpg")
 
-		self.paddleOCR = PaddleOCR(use_angle_cls=False, lang='serial',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory		
+		self.paddleOCR = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory		
 
 		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
 		self.multi_digit_model.load_weights('multi_digit_model/2021-11-26_3/digit_model_last_2021-11-26.h5')
@@ -532,9 +532,7 @@ class CheckSheetReader():
 			cv2.imshow("readMFGNo_ocrImage",ocrImg)
 		# h,w = ocrImg.shape
 		# errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.ENGLISH)
-		
-		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
-		results = ocr.ocr(ocrImg, cls=False, det=False)
+		results = self.paddleOCR.ocr(ocrImg, cls=False, det=False)
 		outputText = results[0][0]
 		outputText = outputText.replace('o','0').replace('S','5').replace('U','0').replace('s','5')
 
