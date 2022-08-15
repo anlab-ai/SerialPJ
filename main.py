@@ -88,7 +88,7 @@ if __name__=="__main__":
 								print(f'alert file : {file}')
 								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'ORingMaterial':
+							if expectedResults["File"][i] == 'MinValue':
 								print(f'file : {file}')
 								print(f'results[file][i] = {results[file][i]}')
 			else:

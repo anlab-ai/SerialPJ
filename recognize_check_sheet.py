@@ -45,7 +45,8 @@ class CheckSheetReader():
 		errCode, self.templateImages[constant.TAG_O_RING_MATERIAL], self.maksImages[constant.TAG_O_RING_MATERIAL]  = self.readTemplateImageAndMask("./template_check_material/ORingMaterial_template.jpg")
 		errCode, self.templateImages[constant.TAG_TEST_DEVICE_NO], self.maksImages[constant.TAG_TEST_DEVICE_NO]  = self.readTemplateImageAndMask("./template_check_material/TesteviceeNo_template.jpg")
 		errCode, self.templateImages[constant.TAG_TEST_RESULT], self.maksImages[constant.TAG_TEST_RESULT]  = self.readTemplateImageAndMask("./template_check_material/TestResult_template.jpg")
-		
+
+		self.paddleOCR = PaddleOCR(use_angle_cls=False, lang='serial',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory		
 
 		self.multi_digit_model, self.digit_model_CTC = build_digit_model(alphabets = '0123456789', max_str_len = 10)
 		self.multi_digit_model.load_weights('multi_digit_model/2021-11-26_3/digit_model_last_2021-11-26.h5')
@@ -121,7 +122,7 @@ class CheckSheetReader():
 		errCode, imgTestResult, testResult = self.detectSelectionTestResult(image)
 		detectResultTestInfos = self.model.getSignName(image)
 		ret , detectStepChecks , im_table = self.model.getCheckTable(image)
-		detectStepChecksStr = f'{detectStepChecks}'.replace("[", "").replace("]", "")
+		# detectStepChecksStr = f'{detectStepChecks}'.replace("[", "").replace("]", "")
 		infoStr = f'{imgName},{pumpName.strip().replace(",", "")},{mfgNo.strip().replace(",", "")},{motorLotNo.strip().replace(",", "")}\
 ,{index_maker},{index_contruction},{side},{electricType}\
 ,{powerValue.strip().replace(",", "")},{dynamicViscosity.strip().replace(",", "")},{pumpValue.strip().replace(",", "")}\
@@ -238,7 +239,7 @@ class CheckSheetReader():
 		errCode = ErrorCode.SUCCESS
 		box = self.position_infos[constant.TAG_MIN_VALUE]
 		outputImg = image[box[1]:box[3],box[0]:box[2]]
-		utilitiesProcessImage.startDebug = True
+		# utilitiesProcessImage.startDebug = True
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readMinValue_outputImg", outputImg)
 		gray = cv2.cvtColor(outputImg, cv2.COLOR_BGR2GRAY)
@@ -263,8 +264,7 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readMinValue_ocrImage",ocrImg)
 
-		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
-		results = ocr.ocr(ocrImg, cls=False, det=False)
+		results = self.paddleOCR.ocr(ocrImg, cls=False, det=False)
 		outputText = results[0][0]
 		if utilitiesProcessImage.startDebug:
 			utilitiesProcessImage.startDebug = False
@@ -476,8 +476,8 @@ class CheckSheetReader():
 		if utilitiesProcessImage.startDebug:
 			cv2.imshow("readPumpName_ocrImage",ocrImg)
 
-		ocr = PaddleOCR(use_angle_cls=False, lang='en',use_gpu=False, rec_algorithm='SVTR_LCNet') # need to run only once to download and load model into memory
-		results = ocr.ocr(ocrImg, cls=False, det=False)
+		
+		results = self.paddleOCR.ocr(ocrImg, cls=False, det=False)
 		outputText = results[0][0]
 		outputText = outputText.replace("~","-").replace('=','-').replace('--','-').replace('$','S').replace('?','7').replace('O','0').replace('-S','-5').replace('-FS','-F5').replace('-5S','-55').replace('-F5S','-F55').replace('-F4S','-F45').replace('-F325','-F32S').replace('-i','-1').replace('-f','-F').replace('LK-E','LK-F')
 
