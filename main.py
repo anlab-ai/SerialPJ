@@ -76,19 +76,19 @@ if __name__=="__main__":
 				# print(f'len(results[{file}] = {len(results[file])}')
 				for i in range(len(results[file])):
 					if i in range(len(expectedResults[file])):
-						if len(expectedResults[file][i]) == 0:
-							continue
+						# if len(expectedResults[file][i]) == 0:
+						# 	continue
 						# if expectedResults["File"][i] == 'TestDeviceNo' \
 						# 	or expectedResults["File"][i] == 'TestResult':
 						# 	if (expectedResults[file][i] != -1) == (results[file][i] != -1):
 						# 		correctResults[i] += 1
-						if expectedResults[file][i] in results[file][i] :
+						if expectedResults[file][i] == results[file][i] :
 							correctResults[i] += 1
 						elif len(results[file][i]) > 0 and results[file][i][0] == '[' and results[file][i][-1] == ']':
 								print(f'alert file : {file}')
 								alertResult[i] += 1
 						else:
-							if expectedResults["File"][i] == 'MinValue':
+							if expectedResults["File"][i] == 'PumpValue':
 								print(f'file : {file}')
 								print(f'results[file][i] = {results[file][i]}')
 			else:

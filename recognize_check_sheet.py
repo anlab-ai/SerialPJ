@@ -281,12 +281,12 @@ class CheckSheetReader():
 				cv2.imshow("readPumpValue_outputImg", outputImg)
 		errCode, binImg = utilitiesProcessImage.convertBinaryImage(outputImg)
 		errCode, binImg = utilitiesProcessImage.removeHorizontalLineTable(binImg, 0.6, 5)
-		errCode, binImg = utilitiesProcessImage.filterBackgroundByColor(outputImg, binImg, 200)	
+		errCode, binImg = utilitiesProcessImage.filterBackgroundByHSVColor(outputImg, binImg, [140,90])	
 	
 		# box_info = [0,0,binImg.shape[1], binImg.shape[0]]
 		
-		errCode, box_info = utilitiesProcessImage.getContentArea(binImg,2)
-		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
+		# errCode, box_info = utilitiesProcessImage.getContentArea(binImg,2)
+		# binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
 		errCode, box_info = utilitiesProcessImage.findMainArea(binImg,2,ratioThreshold=7)
 		binImg = binImg[max(box_info[1],0):min(box_info[1]+box_info[3], outputImg.shape[0]), max(box_info[0], 0):min(box_info[0]+box_info[2], outputImg.shape[1])]
 		padding = int(box_info[3]*0.3)
@@ -300,7 +300,16 @@ class CheckSheetReader():
 			cv2.imshow("readPumpValue_ocrImage",ocrImg)
 		# h,w,c = ocrImg.shape
 		# errCode, outputImg, outputText = self.getString(ocrImg,[0,0,w,h], OCRMode.HAND_WRITTING_SERIAL_STYPE_JP)
-		idx_cls, outputText, bestconf = self.model.predict_char(ocrImg , True)
+		# idx_cls, outputText, bestconf = self.model.predict_char(ocrImg , True)
+		results = self.paddleOCR.ocr(ocrImg, cls=False, det=False)
+		outputText = results[0][0]
+		regex = '[A-Z]{1}'
+		m = re.search(regex, outputText)
+		if m:
+			outputText = m.group(0)
+		else:
+			outputText = ''
+
 		if utilitiesProcessImage.startDebug:
 			utilitiesProcessImage.startDebug = False
 			print(f"readPumpValue_outputText: {outputText}")

@@ -516,6 +516,45 @@ def findSelectionByContour(binaryImg):
 		cv2.imshow("findSelectionByContour_binaryImg", binaryImg)
 	return errCode, selections
 
+def filterBackgroundByHSVColor(image, grayImg, rangeHue):
+	errCode = ErrorCode.SUCCESS
+	if startDebug:
+		cv2.imshow("filterBackgroundByHSVColor_grayImg", grayImg)
+	hsvImg = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+	mask = numpy.zeros((grayImg.shape[0],grayImg.shape[0]), numpy.uint8)
+	if rangeHue[0] < rangeHue[1]:
+		lower = numpy.array([rangeHue[0],60,10])
+		upper = numpy.array([rangeHue[1],255,255])
+		mask = cv2.inRange(hsvImg, lower, upper)
+	else:
+		lower = numpy.array([0,60,10])
+		upper = numpy.array([rangeHue[1],255,255])
+		mask1 = cv2.inRange(hsvImg, lower, upper)
+		lower = numpy.array([rangeHue[0],60,10])
+		upper = numpy.array([180,255,255])
+		mask2 = cv2.inRange(hsvImg, lower, upper)
+		mask = cv2.bitwise_or(mask1,mask2)
+
+	mask = cv2.bitwise_not(mask)
+	if startDebug:
+		cv2.imshow("filterBackgroundByColor_mask", mask)
+	grayImg = cv2.bitwise_and(grayImg, mask)
+	# h,w = grayImg.shape
+	# for y in range(h):
+	# 	for x in range(w):
+	# 		b = int(image[y,x,0])
+	# 		g = int(image[y,x,1])
+	# 		r = int(image[y,x,2])
+	# 		# print(f'b,g,r = {b},{g},{r}')
+	# 		if ((abs(r - g) - (max(r, g)*0.2) > 0 and max(r, g)>thresholds//2) or (abs(r - b) - (max(r, b)*0.2) > 0 and max(r, b)>thresholds//2) or (abs(g - b) - (max(g, b)*0.2) > 0 and max(b, g)>thresholds//2))\
+  # or (r > thresholds and g > thresholds and b > thresholds):
+	# 			grayImg[y,x] = 0
+
+	if startDebug:
+		cv2.imshow("filterBackgroundByColor_grayImg", grayImg)
+	return errCode, grayImg
+
+
 def filterBackgroundByColor(image, grayImg, thresholds):
 	errCode = ErrorCode.SUCCESS
 	if startDebug:
